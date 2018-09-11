@@ -1,4 +1,5 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from formats.json import JsonFormat, JsonConvertError
 
 import json
 
@@ -13,14 +14,24 @@ class CoqTaskHandler(BaseHTTPRequestHandler):
 
         if self.path == "/prove":
             data = self.rfile.read(int(self.headers['content-length']))
-            data = json.loads(data.decode('utf8'))
-            print(data)
+            data = data.decode('utf8')
 
-            # do something ...
-            reply = {
-                    "finished" : True,
-                    "msg"      : ""
-                    }
+            try:
+                print(JsonFormat.import_task(data))
+
+                # do something ...
+                reply = {
+                        "error"    : False,
+                        "finished" : True,
+                        "msg"      : "",
+                        }
+
+            except JsonConvertError as err:
+                reply = {
+                        "error"    : True,
+                        "msg"      : str(err)
+                        }
+
 
         self.send_response(200)
         self.send_header('Content-type', 'text/json')

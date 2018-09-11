@@ -1,5 +1,5 @@
 import abc
-import .term
+import kernel.term
 
 class Notation(abc.ABC):
 

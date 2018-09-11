@@ -3,7 +3,12 @@ import enum
 
 class Term(abc.ABC):
 
+    # each term belongs to a parent
     parent : 'Term' = None
+
+    # if a term is created by a notation, then the way it is rendered depends on the notation
+    # notations have no semantics
+    notation: 'Notation' = None
 
     def setParent(self, parent: 'Term') -> 'NoneType':
         self.parent = parent
@@ -16,7 +21,7 @@ class Term(abc.ABC):
     def export(self) -> 'str':
         pass
 
-    def str(self) -> 'str':
+    def __str__(self) -> 'str':
         return self.export()
 
     def istype(self) -> 'bool':
@@ -47,15 +52,37 @@ PROP = Sort(SortEnum.prop)
 SET  = Sort(SortEnum.set)
 
 
-class Id(Term):
-    def __init__(self, id: 'str'):
-        self.id = id
+class Const(Term):
+    def __init__(self, name: 'str'):
+        self.name = name
 
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
     def export(self) -> 'str':
-        return self.id
+        return self.name
+
+
+class Var(Const):
+    pass
+
+
+class Rel(Term):
+    def __init__(self, index: int):
+        self.index = index
+        self.ref = None
+
+    def type(self) -> 'Term':
+        if self.ref is None:
+            pass
+        else:
+            return self.ref.arg_type
+
+    def export(self) -> 'str':
+        if self.ref is None:
+            return "_REL_%d_" % self.index
+        else:
+            return self.ref.arg_name
 
 
 class Apply(Term):
@@ -115,9 +142,9 @@ class LetIn(Term):
 class Lambda(Term):
     def __init__(self, argname: 'str', argtype: 'Term', body: 'Term'):
         assert id is not None
-        self.argname = argname
-        self.argtype = argtype
-        self.argtype.setParent(self)
+        self.arg_name = argname
+        self.arg_type = argtype
+        self.arg_type.setParent(self)
         self.body = body
         self.body.setParent(self)
 
@@ -125,5 +152,37 @@ class Lambda(Term):
         raise Exception('unimplemented')
 
     def export(self) -> 'str':
-        return "fun ({0}: {1}) => {2}".format(self.argname, self.argtype.export(), self.body.export())
+        return "fun ({0}: {1}) => {2}".format(self.arg_name, self.arg_type.export(), self.body.export())
 
+
+class Construct(Term):
+    def __init__(self, mutind: 'str', ind_index: int, constructor_index: int):
+        self.mutind_name = mutind
+        self.mutind_ref = None
+        self.ind_index = ind_index
+        self.constructor_index = constructor_index
+
+    def type(self) -> 'Term':
+        raise Exception('unimplemented')
+
+    def export(self) -> 'str':
+        if self.mutind_ref is None:
+            return '_%s_%d_%d_' % (self.mutind_name, self.ind_index, self.constructor_index)
+        else:
+            pass
+
+
+class Ind(Term):
+    def __init__(self, mutind: 'str', ind_index: int):
+        self.mutind_name = mutind
+        self.mutind_ref = None
+        self.ind_index = ind_index
+
+    def type(self) -> 'Term':
+        raise Exception('unimplemented')
+
+    def export(self) -> 'str':
+        if self.mutind_ref is None:
+            return '_%s_%d_' % (self.mutind_name, self.ind_index)
+        else:
+            pass

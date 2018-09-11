@@ -6,3 +6,9 @@ Holboost is a python wrapper for Coq, the high-order-logic proof assistant. Most
 This project contains the following parts:
 
 - A Coq plugin to export Coq terms and tasks and obtain the feedback from the python server
+
+
+## some assumptions
+
+- During a single coq task, i.e. the same file, the global environment only changes when new constants (including theorems, definitions, etc.) and variables (including hypotheses) are declared. 
+- Every time we only focus on a single goal.
