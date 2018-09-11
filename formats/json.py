@@ -1,4 +1,5 @@
 from formats.format import Format
+from kernel.declaration import *
 from kernel.term import *
 from kernel.task import Task
 import json
@@ -27,6 +28,8 @@ class JsonFormat(Format):
             elif t['type'] == 'app':
                 args = list(map(convert, t['args']))
                 return Apply(convert(t['func']), *args)
+            elif t['type'] == 'case':
+                return Case()
             elif t['type'] == 'const':
                 return Const(t['name'])
             elif t['type'] == 'construct':
@@ -39,6 +42,8 @@ class JsonFormat(Format):
                 return Var(t['name'])
             elif t['type'] == 'rel':
                 return Rel(t['index'])
+            elif t['type'] == 'prod':
+                return Prod(t['arg_name'], convert(t['arg_type']), convert(t['body_type']))
             else:
                 raise JsonConvertError('unhandled json node %s' % json.dumps(t))
 
@@ -52,5 +57,9 @@ class JsonFormat(Format):
         else:
             json_item = external_t
 
-        return Task(JsonFormat.import_term(json_item['goal']))
+        return Task(
+                JsonFormat.import_term(json_item['goal']),
+                constants={ c['constant_name'] : Constant(c['constant_name'], JsonFormat.import_term(c['constant_type'])) for c in json_item['constants'] },
+                context_variables = { c['variable_name'] : Constant(c['variable_name'], JsonFormat.import_term(c['variable_type'])) for c in json_item['context'] }
+                )
 

@@ -63,6 +63,16 @@ class Const(Term):
         return self.name
 
 
+class Case(Term):
+    def __init__(self):
+        pass
+
+    def type(self) -> 'Term':
+        raise Exception('unimplemented')
+
+    def export(self) -> 'str':
+        return 'CASE'
+
 class Var(Const):
     pass
 
@@ -101,12 +111,12 @@ class Apply(Term):
 
 
 class Prod(Term):
-    def __init__(self, id: 'str', type: 'Term', body: 'Term'):
-        self.id = id
-        self.type = type
-        self.type.setParent(self)
-        self.body = body
-        self.body.setParent(self)
+    def __init__(self, arg_name: 'str', arg_type: 'Term', body_type: 'Term'):
+        self.arg_name = arg_name
+        self.arg_type = arg_type
+        self.arg_type.setParent(self)
+        self.body_type = body_type
+        self.body_type.setParent(self)
 
     def type(self) -> 'Term':
         raise Exception('unimplemented')
@@ -114,13 +124,13 @@ class Prod(Term):
     def export(self) -> 'str':
         # TODO
         # if self.id exists but not used in the sub term, we should also print arrow form
-        if self.id is None:
+        if self.arg_name is None:
             # arrow form
-            return "{0} -> {1}".format(self.type.export(), self.body.export())
+            return "{0} -> {1}".format(self.arg_type, self.body_type)
         else:
             # forall form
             # combine multiple foralls if possible
-            return "forall {0}: {1}, {2}".format(self.id, self.type.export(), self.body.export())
+            return "forall {0}: {1}, {2}".format(self.id, self.arg_type, self.body_type)
 
 
 class LetIn(Term):
