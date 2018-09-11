@@ -5,8 +5,16 @@
 
 exception SerializingFailure of string
 
+let write_to_temp_file (content:string) : string =
+    let filename = Filename.temp_file "coq_holboost" ".task" in
+    let chan = open_out filename in
+    Printf.fprintf chan "%s" content;
+    close_out chan;
+    filename
+
 let post_string (s:string)(target:string) =
-    let ic = Unix.open_process_in (Printf.sprintf "curl -s http://%s/prove --data '%s'" target s) in
+    let temp_file = write_to_temp_file s in
+    let ic = Unix.open_process_in (Printf.sprintf "curl -s http://%s/prove --data @%s" target temp_file) in
     let all_input = ref "" in begin
         try
             while true do
@@ -28,7 +36,7 @@ let constr2json (c: Constr.t) : string =
         let open Constr in
         match (kind c) with
         | Rel index -> Printf.sprintf "{ \"type\" : \"rel\", \"index\" : %d }" index
-        | Var id -> Printf.sprintf "{ \"type\" : \"var\", \"id\" : \"%s\" }" (Names.Id.to_string id)
+        | Var id -> Printf.sprintf "{ \"type\" : \"var\", \"name\" : \"%s\" }" (Names.Id.to_string id)
         (* TODO Meta, Evar *)
         | Sort sort ->
                 Printf.sprintf "{ \"type\" : \"sort\", \"sort\" : \"%s\"} " (
@@ -59,14 +67,14 @@ let constr2json (c: Constr.t) : string =
         | Const (const, _) ->
                 Printf.sprintf "{ \"type\" : \"const\", \"name\" : \"%s\" }" (Names.Constant.to_string const)
         | Ind ((ind, index), _) ->
-                Printf.sprintf "{ \"type\" : \"ind\", \"name\" : \"%s\", \"index\" : %d }" (Names.MutInd.to_string ind) index
+                Printf.sprintf "{ \"type\" : \"ind\", \"mutind_name\" : \"%s\", \"ind_index\" : %d }" (Names.MutInd.to_string ind) index
         | Construct (((ind, index), constructor_index), _) ->
                 (*
                  * according to `kernel/names.ml`, indexes of multiple inductives start from 0 while indexes of constructors start from 1.
                  * to simplify the case, here we decrease the indexes of constructors by 1, consequently all indexes in the exported json
                  * start from 0
                  *)
-                Printf.sprintf "{ \"type\" : \"construct\", \"name\" : \"%s\", \"index\" : %d, \"constructor_index\": %d }" (Names.MutInd.to_string ind) index (constructor_index - 1)
+                Printf.sprintf "{ \"type\" : \"construct\", \"mutind_name\" : \"%s\", \"ind_index\" : %d, \"constructor_index\": %d }" (Names.MutInd.to_string ind) index (constructor_index - 1)
         (* TODO Fix, CoFix, Proj *)
         (* FIXME Case *)
         | Case (case_info, _, c, ac) ->

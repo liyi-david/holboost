@@ -4,5 +4,6 @@
 -Q theory Holboost
 
 src/serialize.ml
-src/trivial.ml4
+src/taskexport.ml
+src/holboost.ml4
 theory/plugin.v
