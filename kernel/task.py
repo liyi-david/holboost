@@ -7,5 +7,8 @@ class Task:
         self.mutinds = mutinds
 
     def __str__(self):
-        return "The task has %d constants, \n" % len(self.constants) + \
-                "[] |- %s" % (self.goal.export(self))
+        return "The task has %d constants, %d mut-inductives and %d context variables\n" % (
+                len(self.constants),
+                len(self.mutinds),
+                len(self.context_variables)
+                ) + "[] |- %s" % (self.goal.export(self))
