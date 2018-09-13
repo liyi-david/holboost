@@ -1,0 +1,6 @@
+from kernel.term import *
+from proving.pattern.pattern import *
+from proving.pattern.match import *
+
+match_at(LetIn('a', Const('nat'), Var('O'), Meta(1)), Const('a'))
+match_at(Meta(1), Const('a'))

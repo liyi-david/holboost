@@ -14,6 +14,39 @@ let get_context env =
     end env ~init:[] in
     Printf.sprintf "[ %s ]" (String.concat ", " str_list)
 
+let encode_one_inductive_body (body: Declarations.one_inductive_body) : string (* in json format *) =
+    let open Declarations in
+    let str_constructors : string list ref = ref [] in
+    for i = Array.length body.mind_consnames - 1 downto 0 do
+        str_constructors := (
+            Printf.sprintf "{ \"constructor_name\" : \"%s\" }"
+                (Names.Id.to_string (Array.get body.mind_consnames i))
+        ) :: !str_constructors
+    done;
+    let str_constructors = Printf.sprintf "[ %s ]" (String.concat ", " !str_constructors) in
+    Printf.sprintf
+        "{ \"ind_name\": \"%s\", \"constructors\" : %s  }"
+        (Names.Id.to_string body.mind_typename)
+        str_constructors
+
+let get_mutinds env = 
+    let open Pre_env in
+    let open Declarations in
+    let pre_env = Environ.pre_env env in
+    let global = pre_env.env_globals in
+    let str_list = Names.Mindmap_env.fold begin fun key mutind str_list ->
+        let mind_body, _ = mutind in
+        let str_ind_packets =
+            String.concat ", " (Array.to_list (Array.map encode_one_inductive_body mind_body.mind_packets))
+        in
+        let str_mind = Printf.sprintf
+            "{ \"mutind_name\" : \"%s\", \"inds\" : [ %s ] }"
+            (Names.MutInd.to_string key)
+            str_ind_packets
+        in
+        str_mind :: str_list
+    end global.env_inductives [] in
+    Printf.sprintf "[ %s ]" (String.concat ", " str_list)
 
 let get_constants env = 
     let open Pre_env in
@@ -50,8 +83,13 @@ let get_task_and_then (hook: string -> unit) : unit Proofview.tactic =
         let str_goal_concl = Serialize.constr2json (EConstr.Unsafe.to_constr goal_concl) in
         let str_constants = get_constants env in
         let str_context = get_context env in
+        let str_mutinds = get_mutinds env in
         let str_task = Printf.sprintf
-            "{ \"goal\" : %s, \"constants\" : %s, \"context\" : %s }" str_goal_concl str_constants str_context
+            "{ \"goal\" : %s, \"constants\" : %s, \"mutinds\": %s, \"context\" : %s }"
+            str_goal_concl
+            str_constants
+            str_mutinds
+            str_context
         in begin
             hook str_task;
             Tacticals.New.tclIDTAC

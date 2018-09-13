@@ -11,5 +11,17 @@ class Constant:
             return "%s: %s := %s" % (self.name, self.type, self.body)
 
 
-class Inductive:
-    pass
+class MutInductive:
+
+    class Constructor:
+        def __init__(self, name: 'str'):
+            self.name = name
+
+    class Inductive:
+        def __init__(self, name: 'str', constructors):
+            self.name = name
+            self.constructors = constructors
+
+    def __init__(self, name: 'str', inds: 'Inductive list'):
+        self.name = name
+        self.inds = inds

@@ -48,10 +48,10 @@ let constr2json (c: Constr.t) : string =
         (* FIXME Cast *)
         | Cast (c, kind, types) ->
                 Printf.sprintf "{ \"type\" : \"cast\" , \"base_term\" : %s, \"cast_kind\" : \" \", \"guaranteed_type\" : %s }" (convert c) (convert types)
-        | Prod (name, var_type, body_type) ->
-                Printf.sprintf "{ \"type\" : \"prod\", \"arg_name\": %s, \"arg_type\" : %s, \"body_type\": %s }" (string_of_nullable_name name)(convert var_type) (convert body_type)
-        | Lambda (name, var_type, body_type) ->
-                Printf.sprintf "{ \"type\" : \"lambda\", \"arg_name\": %s, \"arg_type\" : %s, \"body\": %s }" (string_of_nullable_name name)(convert var_type) (convert body_type)
+        | Prod (name, var_type, body) ->
+                Printf.sprintf "{ \"type\" : \"prod\", \"arg_name\": %s, \"arg_type\" : %s, \"body\": %s }" (string_of_nullable_name name)(convert var_type) (convert body)
+        | Lambda (name, var_type, body) ->
+                Printf.sprintf "{ \"type\" : \"lambda\", \"arg_name\": %s, \"arg_type\" : %s, \"body\": %s }" (string_of_nullable_name name)(convert var_type) (convert body)
         | LetIn (arg_name, arg_type, arg_body, body) ->
                 Printf.sprintf 
                     "{ \"type\" : \"letin\", \"arg_name\": %s, \"arg_type\": %s, \"arg_body\": %s, \"body\": %s }"

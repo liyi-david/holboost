@@ -32,6 +32,12 @@ def CoqTaskHandlerFactory(top : 'Top'):
                             "msg"      : "",
                             }
 
+                except json.JSONDecodeError as err:
+                    print(data[err.pos - 10:err.pos + 10])
+                    reply = {
+                            "error"    : True,
+                            "msg"      : "json decoding failes because %s. for further information please refer to the server log" % str(err)
+                            }
                 except JsonConvertError as err:
                     reply = {
                             "error"    : True,
@@ -43,6 +49,10 @@ def CoqTaskHandlerFactory(top : 'Top'):
             self.send_header('Content-type', 'text/json')
             self.end_headers()
             self.wfile.write(json.dumps(reply).encode('utf8'))
+
+
+        def log_message(self, format, *args):
+            top.log_message(format % args)
 
     return CoqTaskHandler
 

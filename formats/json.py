@@ -36,18 +36,40 @@ class JsonFormat(Format):
                 return Construct(t['mutind_name'], t['ind_index'], t['constructor_index'])
             elif t['type'] == 'lambda':
                 return Lambda(t['arg_name'], convert(t['arg_type']), convert(t['body']))
+            elif t['type'] == 'letin':
+                return LetIn(t['arg_name'], convert(t['arg_type']), convert(t['arg_body']), convert(t['body']))
             elif t['type'] == 'ind':
                 return Ind(t['mutind_name'], t['ind_index'])
             elif t['type'] == 'var':
                 return Var(t['name'])
             elif t['type'] == 'rel':
-                return Rel(t['index'])
+                return Rel(t['index'] - 1)
             elif t['type'] == 'prod':
-                return Prod(t['arg_name'], convert(t['arg_type']), convert(t['body_type']))
+                return Prod(t['arg_name'], convert(t['arg_type']), convert(t['body']))
             else:
                 raise JsonConvertError('unhandled json node %s' % json.dumps(t))
 
         return convert(json_item)
+
+
+    def import_mutind(json_item):
+
+        def import_constructor(json_item):
+            return MutInductive.Constructor(
+                    json_item['constructor_name']
+                    )
+
+        def import_ind(json_item):
+            return MutInductive.Inductive(
+                    json_item['ind_name'],
+                    [ import_constructor(c) for c in json_item['constructors'] ]
+                    )
+
+        return MutInductive(
+                json_item['mutind_name'],
+                [ import_ind(ind) for ind in json_item['inds'] ]
+                )
+
 
     @staticmethod
     def import_task(external_t):
@@ -60,6 +82,7 @@ class JsonFormat(Format):
         return Task(
                 JsonFormat.import_term(json_item['goal']),
                 constants={ c['constant_name'] : Constant(c['constant_name'], JsonFormat.import_term(c['constant_type'])) for c in json_item['constants'] },
-                context_variables = { c['variable_name'] : Constant(c['variable_name'], JsonFormat.import_term(c['variable_type'])) for c in json_item['context'] }
+                context_variables = { c['variable_name'] : Constant(c['variable_name'], JsonFormat.import_term(c['variable_type'])) for c in json_item['context'] },
+                mutinds={ c['mutind_name'] : JsonFormat.import_mutind(c) for c in json_item['mutinds'] }
                 )
 

@@ -7,7 +7,7 @@ DECLARE PLUGIN "holboost"
 
 
 TACTIC EXTEND pysolve
-| [ "pysolve" ] -> [ Taskexport.get_task_and_then begin
+| [ "boom" ] -> [ Taskexport.get_task_and_then begin
         fun s ->
             Feedback.msg_info Pp.(str Serialize.(post_string s "localhost:8081"))
     end

@@ -18,7 +18,11 @@ class Term(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def export(self) -> 'str':
+    def export(self, environment=None, debug=False) -> 'str':
+        pass
+
+    @abc.abstractmethod
+    def __eq__(self, value):
         pass
 
     def __str__(self) -> 'str':
@@ -44,8 +48,12 @@ class Sort(Term):
     def type(self) -> 'Term':
         return Sort(SortEnum.type)
 
-    def export(self) -> 'str':
+    def export(self, environment=None, debug=False) -> 'str':
         return self.sort.value
+
+    def __eq__(self, value):
+        return isinstance(value, Sort) and value.sort == self.sort
+
 
 TYPE = Sort(SortEnum.type)
 PROP = Sort(SortEnum.prop)
@@ -59,28 +67,59 @@ class Const(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self) -> 'str':
-        return self.name
+    def export(self, environment=None, debug=False) -> 'str':
+        found = False
+        try:
+            if self.name in environment.constants: found = True
+        except:
+            # TODO add log to the top!
+            pass
+
+        if not debug and found:
+            # for Coq.Init.Peano.gt we only return `gt`
+            # if debug mode is not activated
+            return self.name.split('.')[-1]
+        else:
+            return self.name
+
+    def __eq__(self, value):
+        return isinstance(value, Const) and self.name == value.name
 
 
 class Case(Term):
+    # TODO not finished yet!!
     def __init__(self):
         pass
 
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self) -> 'str':
+    def export(self, environment=None, debug=False) -> 'str':
         return 'CASE'
 
+    def __eq__(self, value):
+        return False
+
+
 class Var(Const):
-    pass
+    def export(self, environment=None, debug=False) -> 'str':
+        found = False
+        try:
+            if self.name in environment.context_variables: found = True
+        except:
+            # TODO add log to the top!
+            pass
+
+        if not debug and found:
+            return self.name.split('.')[-1]
+        else:
+            return "[VAR: %s]" % Const.export(self, debug)
 
 
 class Rel(Term):
     def __init__(self, index: int):
+        # all indexes in holboost must start from zero !!!!!!
         self.index = index
-        self.ref = None
 
     def type(self) -> 'Term':
         if self.ref is None:
@@ -88,70 +127,112 @@ class Rel(Term):
         else:
             return self.ref.arg_type
 
-    def export(self) -> 'str':
-        if self.ref is None:
-            return "_REL_%d_" % self.index
-        else:
-            return self.ref.arg_name
+    def export(self, environment=None, debug=False) -> 'str':
+        pt = self
+        curr_rel_index = -1
+        while pt.parent is not None and isinstance(pt.parent, Term):
+            pt = pt.parent
+            if isinstance(pt, (LetIn, Lambda, Prod)):
+                curr_rel_index += 1
+                if curr_rel_index == self.index:
+                    return pt.arg_name
+
+        return "_REL_%d_" % self.index
+
+    def __eq__(self, value):
+        return isinstance(value, Rel) and value.index == self.index
 
 
 class Apply(Term):
     def __init__(self, func: 'Term', *args: 'Term'):
         self.func = func
+        self.func.setParent(self)
         self.args = args
+        for arg in args:
+            arg.setParent(self)
 
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self) -> 'str':
+    def export(self, environment=None, debug=False) -> 'str':
         return '({0} {1})'.format(
-                self.func.export(),
-                ' '.join(map(lambda t: t.export(), self.args))
+                self.func.export(environment, debug),
+                ' '.join(map(lambda t: t.export(environment, debug), self.args))
                 )
+
+    def __eq__(self, value):
+        return isinstance(value, Apply) and \
+                value.func == self.func and \
+                value.args == self.args
 
 
 class Prod(Term):
-    def __init__(self, arg_name: 'str', arg_type: 'Term', body_type: 'Term'):
+    def __init__(self, arg_name: 'str', arg_type: 'Term', body: 'Term'):
         self.arg_name = arg_name
         self.arg_type = arg_type
         self.arg_type.setParent(self)
-        self.body_type = body_type
-        self.body_type.setParent(self)
-
-    def type(self) -> 'Term':
-        raise Exception('unimplemented')
-
-    def export(self) -> 'str':
-        # TODO
-        # if self.id exists but not used in the sub term, we should also print arrow form
-        if self.arg_name is None:
-            # arrow form
-            return "{0} -> {1}".format(self.arg_type, self.body_type)
-        else:
-            # forall form
-            # combine multiple foralls if possible
-            return "forall {0}: {1}, {2}".format(self.id, self.arg_type, self.body_type)
-
-
-class LetIn(Term):
-    def __init__(self, id: 'str', type: 'Term', body: 'Term'):
-        assert id is not None
-        self.id = id
-        self.type = type
-        self.type.setParent(self)
         self.body = body
         self.body.setParent(self)
 
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self) -> 'str':
-        return "let {0} := {1} in {2}".format(self.id, self.type.export(), self.body.export())
+    def export(self, environment=None, debug=False) -> 'str':
+        # TODO
+        # if self.id exists but not used in the sub term, we should also print arrow form
+        if self.arg_name is None:
+            # arrow form
+            return "{0} -> {1}".format(
+                    self.arg_type.export(environment, debug),
+                    self.body.export(environment, debug)
+                    )
+        else:
+            # forall form
+            # combine multiple foralls if possible
+            return "forall {0}: {1}, {2}".format(
+                    self.arg_name,
+                    self.arg_type.export(environment, debug),
+                    self.body.export(environment, debug)
+                    )
+
+    def __eq__(self, value):
+        return isinstance(value, Prod) and \
+                value.arg_name == self.arg_name and \
+                value.arg_type == self.arg_type and \
+                value.body == self.body
+
+
+class LetIn(Term):
+    def __init__(self, arg_name: 'str', arg_type: 'Term', arg_body: 'Term', body: 'Term'):
+        self.arg_name = arg_name
+        self.arg_type = arg_type
+        self.arg_type.setParent(self)
+        self.arg_body = arg_body
+        self.arg_body.setParent(self)
+        self.body = body
+        self.body.setParent(self)
+
+    def type(self) -> 'Term':
+        raise Exception('unimplemented')
+
+    def export(self, environment=None, debug=False) -> 'str':
+        return "let {0} : {1} := {2} in {3}".format(
+                self.arg_name,
+                self.arg_type.export(environment, debug),
+                self.arg_body.export(environment, debug),
+                self.body.export(environment, debug)
+                )
+
+    def __eq__(self, value):
+        return isinstance(value, Prod) and \
+                value.arg_name == self.arg_name and \
+                value.arg_type == self.arg_type and \
+                value.arg_body == self.arg_body and \
+                value.body == self.body
 
 
 class Lambda(Term):
     def __init__(self, argname: 'str', argtype: 'Term', body: 'Term'):
-        assert id is not None
         self.arg_name = argname
         self.arg_type = argtype
         self.arg_type.setParent(self)
@@ -161,38 +242,79 @@ class Lambda(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self) -> 'str':
-        return "fun ({0}: {1}) => {2}".format(self.arg_name, self.arg_type.export(), self.body.export())
+    def export(self, environment=None, debug=False) -> 'str':
+        return "fun ({0}: {1}) => {2}".format(
+                self.arg_name,
+                self.arg_type.export(environment, debug),
+                self.body.export(environment, debug)
+                )
+
+    def __eq__(self, value):
+        return isinstance(value, Prod) and \
+                value.arg_name == self.arg_name and \
+                value.arg_type == self.arg_type and \
+                value.body == self.body
 
 
 class Construct(Term):
     def __init__(self, mutind: 'str', ind_index: int, constructor_index: int):
         self.mutind_name = mutind
-        self.mutind_ref = None
         self.ind_index = ind_index
         self.constructor_index = constructor_index
 
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self) -> 'str':
-        if self.mutind_ref is None:
-            return '_%s_%d_%d_' % (self.mutind_name, self.ind_index, self.constructor_index)
-        else:
+    def export(self, environment=None, debug=False) -> 'str':
+        found = False
+        construct_name = None
+
+        try:
+            if self.mutind_name in environment.mutinds:
+                construct_name = environment.mutinds[self.mutind_name].inds[self.ind_index].constructors[self.constructor_index].name
+                found = True
+        except:
+            # TODO log
             pass
+
+        if not debug and found:
+            return construct_name
+        else:
+            return '_%s_%d_%d_' % (self.mutind_name, self.ind_index, self.constructor_index)
+
+    def __eq__(self, value):
+        return isinstance(value, Construct) and \
+                value.mutind_name == self.mutind_name and \
+                value.ind_index == self.ind_index and \
+                value.constructor_index == self.constructor_index
 
 
 class Ind(Term):
     def __init__(self, mutind: 'str', ind_index: int):
         self.mutind_name = mutind
-        self.mutind_ref = None
         self.ind_index = ind_index
 
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self) -> 'str':
-        if self.mutind_ref is None:
-            return '_%s_%d_' % (self.mutind_name, self.ind_index)
-        else:
+    def export(self, environment=None, debug=False) -> 'str':
+        found = False
+        ind_name = None
+
+        try:
+            if self.mutind_name in environment.mutinds:
+                ind_name = environment.mutinds[self.mutind_name].inds[self.ind_index].name
+                found = True
+        except:
+            # TODO log
             pass
+
+        if not debug and found:
+            return ind_name
+        else:
+            return '_%s_%d_' % (self.mutind_name, self.ind_index)
+
+    def __eq__(self, value):
+        return isinstance(value, Ind) and \
+                value.mutind_name == self.mutind_name and \
+                value.ind_index == self.ind_index
