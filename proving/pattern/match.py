@@ -10,16 +10,23 @@ class MatchFailure(Exception):
 class MatchResult:
 
     class OneMatchResult:
-        def __init__(self, pattern, matched_position, metavar_map, alias_map):
+        def __init__(self, pattern, matched, metavar_map, alias_map):
             self.pattern = pattern
-            self.matched_position = matched_position
+            self.matched = matched
             self.metavar_map = metavar_map
             self.alias_map = alias_map
+
+        def render(self, environment=None):
+            return "pattern %s matched with %s, where %s" % (
+                    self.pattern.render(environment),
+                    self.matched.render(environment),
+                    ", ".join([ "?%s = %s" % (name, self.metavar_map[name].render(environment)) for name in self.metavar_map ])
+                    )
 
 
     def __init__(self, term):
         self.term = term
-        # each match is a 3-tuple (pattern, matched_position, patvar_map)
+        # each match is a 3-tuple (pattern, matched, patvar_map)
         self.matches = []
 
     def __add__(self, result_or_tuple):
@@ -37,6 +44,11 @@ class MatchResult:
             self.matches.append(MatchResult.OneMatchResult(*result_or_tuple))
 
         return self
+
+    def render(self, environment=None):
+        return "\n".join(
+                map(lambda oneresult: oneresult.render(environment), self.matches)
+                )
 
 
 
