@@ -20,10 +20,13 @@ class Meta(Term):
     def type(self):
         raise PatternAbuse("type of patterns cannot be evaluated")
 
-    def export(self, environment=None, debug=False):
+    def render(self, environment=None, debug=False):
         return "?%s" % ("_" if self.index is None else self.index)
 
     def __eq__(self, value):
+        raise PatternAbuse()
+
+    def subterms(self):
         raise PatternAbuse()
 
 
@@ -39,11 +42,14 @@ class Alias(Term):
     def type(self):
         raise PatternAbuse("type of patterns cannot be evaluated")
 
-    def export(self, environment=None, debug=False):
-        return "(%s) as ?%s" % (self.sub_pattern.export(environment, debug), self.alias)
+    def render(self, environment=None, debug=False):
+        return "(%s) as ?%s" % (self.sub_pattern.render(environment, debug), self.alias)
 
     def __eq__(self, value):
         raise PatternAbuse()
+
+    def subterms(self):
+        raise PatternAbouse()
 
 
 def from_rels(term):

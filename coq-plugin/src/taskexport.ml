@@ -3,6 +3,10 @@ open Serialize
 exception ExportFailure of string
 
 
+let get_hints (dbs: string list) : string =
+    Feedback.msg_info Pp.(str (String.concat ", " dbs));
+    "wtf"
+
 let get_context env =
     let str_list = Environ.fold_named_context begin fun env decl str_list ->
         let name = Context.Named.Declaration.get_id decl in
@@ -75,7 +79,13 @@ let get_constants env =
     global.env_constants [] in
     Printf.sprintf "[ %s ]" (String.concat ", " str_list)
 
-let get_task_and_then (hook: string -> unit) : unit Proofview.tactic =
+(* get_task_and_then
+ *
+ * obtains the goal and its surrounding context and globals as json string. when this is done,
+ * the string will be passed to hook for following operations.
+ * if cmd is provided, it will be integrated into the task as an additional json field
+ *)
+let get_task_and_then ?(cmd:string option = None) (hook: string -> unit) : unit Proofview.tactic =
     Proofview.Goal.enter_one begin fun gl ->
         let env = Proofview.Goal.env gl in
         let _ = Proofview.Goal.sigma gl in
@@ -85,11 +95,12 @@ let get_task_and_then (hook: string -> unit) : unit Proofview.tactic =
         let str_context = get_context env in
         let str_mutinds = get_mutinds env in
         let str_task = Printf.sprintf
-            "{ \"goal\" : %s, \"constants\" : %s, \"mutinds\": %s, \"context\" : %s }"
+            "{ \"goal\" : %s, \"constants\" : %s, \"mutinds\": %s, \"context\" : %s, \"command\" : %s }"
             str_goal_concl
             str_constants
             str_mutinds
             str_context
+            (match cmd with Some s -> s | None -> "null")
         in begin
             hook str_task;
             Tacticals.New.tclIDTAC

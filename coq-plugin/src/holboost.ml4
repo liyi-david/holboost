@@ -5,9 +5,7 @@ open Stdarg
 open Genarg
 open Extraargs
 
-open Pcoq
-open Pcoq.Prim
-open Pcoq.Constr
+open Taskexport
 
 DECLARE PLUGIN "holboost"
 
@@ -22,13 +20,23 @@ ARGUMENT EXTEND pattern
 END
 
 TACTIC EXTEND boom
-| [ "boom" ] -> [ Taskexport.get_task_and_then begin
+| [ "boom" ] -> [
+    Taskexport.get_task_and_then begin
         fun s ->
             Feedback.msg_info Pp.(str Serialize.(post_string s "localhost:8081"))
     end
-    ] 
+] 
 | [ "boom" "match" "goal" "with" pattern(pat) ] -> [
     Taskexport.get_task_and_then begin
+        fun s ->
+            Feedback.msg_info Pp.(str Serialize.(post_string s "localhost:8081"))
+    end
+]
+| [ "boom" "autorewrite" "with" ne_preident_list(l) ] -> [
+    let autorewrite_command = Some (
+        Printf.sprintf "{ \"command\" : \"rewrite\", \"hints\" : %s }" (get_hints l)
+    ) in
+    Taskexport.get_task_and_then ~cmd:autorewrite_command begin 
         fun s ->
             Feedback.msg_info Pp.(str Serialize.(post_string s "localhost:8081"))
     end

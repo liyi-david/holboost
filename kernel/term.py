@@ -18,15 +18,19 @@ class Term(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         pass
 
     @abc.abstractmethod
     def __eq__(self, value):
         pass
 
+    @abc.abstractmethod
+    def subterms(self):
+        pass
+
     def __str__(self) -> 'str':
-        return self.export()
+        return self.render()
 
     def istype(self) -> 'bool':
         if isinstance(self.type(), Sort) and self.type().sort is SortEnum.type:
@@ -48,11 +52,14 @@ class Sort(Term):
     def type(self) -> 'Term':
         return Sort(SortEnum.type)
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return self.sort.value
 
     def __eq__(self, value):
         return isinstance(value, Sort) and value.sort == self.sort
+
+    def subterms(self):
+        return []
 
 
 TYPE = Sort(SortEnum.type)
@@ -67,7 +74,7 @@ class Const(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         found = False
         try:
             if self.name in environment.constants: found = True
@@ -85,6 +92,8 @@ class Const(Term):
     def __eq__(self, value):
         return isinstance(value, Const) and self.name == value.name
 
+    def subterms(self):
+        return []
 
 class Case(Term):
     # TODO not finished yet!!
@@ -94,15 +103,18 @@ class Case(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return 'CASE'
 
     def __eq__(self, value):
         return False
 
+    def subterms(self):
+        return []
+
 
 class Var(Const):
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         found = False
         try:
             if self.name in environment.context_variables: found = True
@@ -113,7 +125,7 @@ class Var(Const):
         if not debug and found:
             return self.name.split('.')[-1]
         else:
-            return "[VAR: %s]" % Const.export(self, debug)
+            return "[VAR: %s]" % Const.render(self, debug)
 
 
 class Rel(Term):
@@ -127,7 +139,7 @@ class Rel(Term):
         else:
             return self.ref.arg_type
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         pt = self
         curr_rel_index = -1
         while pt.parent is not None and isinstance(pt.parent, Term):
@@ -142,6 +154,9 @@ class Rel(Term):
     def __eq__(self, value):
         return isinstance(value, Rel) and value.index == self.index
 
+    def subterms(self):
+        return []
+
 
 class Apply(Term):
     def __init__(self, func: 'Term', *args: 'Term'):
@@ -154,16 +169,19 @@ class Apply(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return '({0} {1})'.format(
-                self.func.export(environment, debug),
-                ' '.join(map(lambda t: t.export(environment, debug), self.args))
+                self.func.render(environment, debug),
+                ' '.join(map(lambda t: t.render(environment, debug), self.args))
                 )
 
     def __eq__(self, value):
         return isinstance(value, Apply) and \
                 value.func == self.func and \
                 value.args == self.args
+
+    def subterms(self):
+        return [self.func] + list(self.args)
 
 
 class Prod(Term):
@@ -177,22 +195,22 @@ class Prod(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         # TODO
         # if self.id exists but not used in the sub term, we should also print arrow form
         if self.arg_name is None:
             # arrow form
             return "{0} -> {1}".format(
-                    self.arg_type.export(environment, debug),
-                    self.body.export(environment, debug)
+                    self.arg_type.render(environment, debug),
+                    self.body.render(environment, debug)
                     )
         else:
             # forall form
             # combine multiple foralls if possible
             return "forall {0}: {1}, {2}".format(
                     self.arg_name,
-                    self.arg_type.export(environment, debug),
-                    self.body.export(environment, debug)
+                    self.arg_type.render(environment, debug),
+                    self.body.render(environment, debug)
                     )
 
     def __eq__(self, value):
@@ -200,6 +218,9 @@ class Prod(Term):
                 value.arg_name == self.arg_name and \
                 value.arg_type == self.arg_type and \
                 value.body == self.body
+
+    def subterms(self):
+        return [self.arg_type, self.body]
 
 
 class LetIn(Term):
@@ -215,12 +236,12 @@ class LetIn(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return "let {0} : {1} := {2} in {3}".format(
                 self.arg_name,
-                self.arg_type.export(environment, debug),
-                self.arg_body.export(environment, debug),
-                self.body.export(environment, debug)
+                self.arg_type.render(environment, debug),
+                self.arg_body.render(environment, debug),
+                self.body.render(environment, debug)
                 )
 
     def __eq__(self, value):
@@ -229,6 +250,9 @@ class LetIn(Term):
                 value.arg_type == self.arg_type and \
                 value.arg_body == self.arg_body and \
                 value.body == self.body
+
+    def subterms(self):
+        return [self.arg_type, self.arg_body, self.body]
 
 
 class Lambda(Term):
@@ -242,11 +266,11 @@ class Lambda(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return "fun ({0}: {1}) => {2}".format(
                 self.arg_name,
-                self.arg_type.export(environment, debug),
-                self.body.export(environment, debug)
+                self.arg_type.render(environment, debug),
+                self.body.render(environment, debug)
                 )
 
     def __eq__(self, value):
@@ -254,6 +278,9 @@ class Lambda(Term):
                 value.arg_name == self.arg_name and \
                 value.arg_type == self.arg_type and \
                 value.body == self.body
+
+    def subterms(self):
+        return [self.arg_type, self.body]
 
 
 class Construct(Term):
@@ -265,7 +292,7 @@ class Construct(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         found = False
         construct_name = None
 
@@ -288,6 +315,9 @@ class Construct(Term):
                 value.ind_index == self.ind_index and \
                 value.constructor_index == self.constructor_index
 
+    def subterms(self):
+        return []
+
 
 class Ind(Term):
     def __init__(self, mutind: 'str', ind_index: int):
@@ -297,7 +327,7 @@ class Ind(Term):
     def type(self) -> 'Term':
         raise Exception('unimplemented')
 
-    def export(self, environment=None, debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         found = False
         ind_name = None
 
@@ -318,3 +348,6 @@ class Ind(Term):
         return isinstance(value, Ind) and \
                 value.mutind_name == self.mutind_name and \
                 value.ind_index == self.ind_index
+
+    def subterms(self):
+        return []

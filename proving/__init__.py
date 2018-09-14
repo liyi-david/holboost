@@ -17,7 +17,7 @@ def load():
                     mod = import_module(".".join(['proving', name, cmdname[:-3]]))
                     try:
                         if mod.autoload == True:
-                            entry = mod.run
+                            entry = getattr(mod, cmdname[:-3])
                             commands[cmdname[:-3]] = entry
                     except Exception:
                         # FIXME some kind of log?
