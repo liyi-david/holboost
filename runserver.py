@@ -2,6 +2,8 @@
 from lib.server import run_coq_server
 from lib.top import Top
 
+import sys
+sys.setrecursionlimit(100000)
 
 t = Top()
 

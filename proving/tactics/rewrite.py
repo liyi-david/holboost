@@ -38,7 +38,7 @@ def generate_task_equality(task: 'Task'):
 
     return equalities
 
-def run(task: 'Task'):
+def rewrite(task: 'Task'):
     print(task)
     for eq in generate_task_equality(task).values():
         print(eq)

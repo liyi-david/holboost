@@ -1,7 +1,9 @@
-from formats.format import Format
+from interaction.formats.format import Format
 from kernel.declaration import *
 from kernel.term import *
 from kernel.task import Task
+from interaction.commands import *
+
 import json
 
 
@@ -51,7 +53,27 @@ class JsonFormat(Format):
 
         return convert(json_item)
 
+    @staticmethod
+    def import_command(json_item):
+        if json_item is None:
+            return IdleCommand()
+        elif json_item['name'] == "rewrite":
+            return RewriteCommand(
+                    list(
+                        map(
+                            lambda hintrec : RewriteCommand.RewriteHint(
+                                JsonFormat.import_term(hintrec['type']),
+                                JsonFormat.import_term(hintrec['pattern']),
+                                JsonFormat.import_term(hintrec['lemma']),
+                                hintrec['right2left']
+                            ),
+                            json_item['hints']
+                        )
+                    )
+                )
 
+
+    @staticmethod
     def import_mutind(json_item):
 
         def import_constructor(json_item):
@@ -83,6 +105,7 @@ class JsonFormat(Format):
                 JsonFormat.import_term(json_item['goal']),
                 constants={ c['constant_name'] : Constant(c['constant_name'], JsonFormat.import_term(c['constant_type'])) for c in json_item['constants'] },
                 context_variables = { c['variable_name'] : Constant(c['variable_name'], JsonFormat.import_term(c['variable_type'])) for c in json_item['context'] },
-                mutinds={ c['mutind_name'] : JsonFormat.import_mutind(c) for c in json_item['mutinds'] }
+                mutinds={ c['mutind_name'] : JsonFormat.import_mutind(c) for c in json_item['mutinds'] },
+                command=JsonFormat.import_command(json_item['command'])
                 )
 

@@ -27,6 +27,7 @@ TACTIC EXTEND boom
     end
 ] 
 | [ "boom" "match" "goal" "with" pattern(pat) ] -> [
+    (* FIXME *)
     Taskexport.get_task_and_then begin
         fun s ->
             Feedback.msg_info Pp.(str Serialize.(post_string s "localhost:8081"))
@@ -34,7 +35,7 @@ TACTIC EXTEND boom
 ]
 | [ "boom" "autorewrite" "with" ne_preident_list(l) ] -> [
     let autorewrite_command = Some (
-        Printf.sprintf "{ \"command\" : \"rewrite\", \"hints\" : %s }" (get_hints l)
+        Printf.sprintf "{ \"name\" : \"rewrite\", \"hints\" : %s }" (get_rewrite_hints l)
     ) in
     Taskexport.get_task_and_then ~cmd:autorewrite_command begin 
         fun s ->

@@ -23,6 +23,10 @@ class Top:
     def log_message(self, message):
         self.message_pool.append(message)
 
+    def print(self, *args):
+        print("\rCommand MSG ", *args)
+        print("Holboost >>> ", end="", flush=True)
+
     def run(self):
         # load rc file
         try:

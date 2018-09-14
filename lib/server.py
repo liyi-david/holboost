@@ -1,5 +1,5 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from formats.json import JsonFormat, JsonConvertError
+from interaction.formats.json import JsonFormat, JsonConvertError
 
 import threading
 import json
@@ -24,6 +24,8 @@ def CoqTaskHandlerFactory(top : 'Top'):
                 try:
                     task = JsonFormat.import_task(data)
                     top.namespace['task'] = task
+
+                    task.command.run(top)
 
                     # do something ...
                     reply = {
