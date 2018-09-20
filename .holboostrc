@@ -1,3 +1,4 @@
 from kernel.term import *
 from proving.pattern.pattern import *
 from proving.pattern.match import *
+from proving.termopr.tuple import *

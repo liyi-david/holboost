@@ -1,4 +1,5 @@
 
+
 Declare ML Module "serialize".
 Declare ML Module "mutindexport".
 Declare ML Module "taskexport".
@@ -10,3 +11,13 @@ Proof.
   rewrite H1, H2.
   reflexivity.
 Qed.
+
+(* we using the following theorem to rewrite b with a while a = b *)
+Theorem rewrite_l2r : forall (T:Type) (a b:T) (P: T -> Prop), a = b -> (P b -> P a).
+Proof.
+  intros T a b P H.
+  rewrite H.
+  intro H1.
+  apply H1.
+Qed.
+  

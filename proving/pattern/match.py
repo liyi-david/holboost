@@ -47,6 +47,14 @@ class MatchResult:
 
         return self
 
+    def index_by_matched(self, t: 'Term') -> int:
+        # FIXME this will be extremely slow
+        for onematch in self:
+            if onematch.matched is t:
+                return self.matches.index(onematch)
+
+        return None
+
     def render(self, environment=None):
         return "\n".join(
                 map(lambda oneresult: oneresult.render(environment), self.matches)

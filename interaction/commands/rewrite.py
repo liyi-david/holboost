@@ -1,5 +1,6 @@
 from proving.pattern.match import *
 from proving.tactics.rewrite import *
+from proving.termopr.tuple import *
 
 from .command import Command
 
@@ -37,8 +38,6 @@ class RewriteCommand(Command):
         patterns = list(map(lambda hint: hint.pat_left, self.hints))
 
         match_result = match(patterns, self.task.goal, match_subterm=True, environment=self.task)
-        # FIXME
-        top.namespace['result'] = match_result
 
         # now let us construct the proof-term to apply
         # the basic idea is, if we wanna replace a with b, c with d, then first construct a proof
@@ -78,20 +77,36 @@ class RewriteCommand(Command):
         top.print("final eq hypothesis: ", proof.type(self.task).render(self.task))
         top.namespace['proof'] = proof
 
+        # assuming we need to replace a0, a1, ..., an with b0, ...., bn
+        # in the final proof lemma forall T: Type, forall a: T, forall b: T, forall P: T -> Prop, (eq T a b) -> (P b) -> (P a)
+        # now we have:
+        # - T, a, b (eq T a b) from proof
+        # now we need to construct P as follows
+
+        # extract the required variables
+        Ttuple, a, b = proof.type(self.task).args
+
         # this maps id of a sub-term to a match result (if exists)
-        def replace(context, term):
+        def replace(context_len, term):
             subterms = term.subterms()
             for i in range(len(subterms)):
-                if id(subterms[i]) in match_result_map:
-                    subterms[i] = Rel(len(context) + len(additional_context))
-                    # FIXME at least term and type
-                    additional_context.append('NAME')
-                    # FIXME appliedto?
-                    appliedto.append(Const('wtf'))
+                index = match_result.index_by_matched(subterms[i])
+                if index is not None:
+                    subterms[i] = tuple_nth(Rel(context_len), index, Ttuple)
                 else:
-                    # only in the last term we add new context
-                    if isinstance(term, ContextTerm) and i == len(subterms) - 1:
-                        subterms[i] = replace(context + [term], subterms[i])
-                    else:
-                        subterms[i] = replace(context, subterms[i])
+                    subterms[i] = replace(
+                            context_len + (1 if isinstance(term, ContextTerm) else 0),
+                            subterms[i]
+                            )
 
+            return term.subterms_subst(subterms)
+
+        P = Lambda("__VAR_TUPLE", Ttuple, replace(0, self.task.goal))
+        # construct the final term to apply
+        partial_proof = Apply(
+                Const("Holboost.plugin.rewrite_l2r"),
+                Ttuple, a, b, P, proof
+                )
+
+        print(partial_proof.render(self.task))
+        print(partial_proof.type(self.task).render(self.task))
