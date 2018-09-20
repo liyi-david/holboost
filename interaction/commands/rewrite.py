@@ -45,13 +45,38 @@ class RewriteCommand(Command):
         # for a, b = c, d
 
         # the first thing is to generate the equality proof of the tuple
+        # pair_eq: T1, T2, (a b:T1) (c d:T2) a = b -> c = d -> (a, d) = (b, d)
+        # the proof is located in coq-plugin/theory/plugin.v
+        pair_eq = Const('Holboost.plugin.pair_eq')
         proof = None
-        for one_match in match_result.matches:
+
+        # it is important to use reversed here, since a pair (a, b, c) is actually constructed as
+        # (a, (b, c)) in coq, so first we prove that b, c = b', c' instead of a and a'
+        for one_match in reversed(match_result.matches):
             hint = self.get_hint_by_left_pattern(one_match.pattern)
 
             eq_hyp_args = reversed([one_match.metavar_map[i] for i in range(len(hint.context))])
             eq_hyp = Apply(hint.lemma, *eq_hyp_args)
             top.print("eq hypothesis: ", eq_hyp.type(self.task).render(self.task))
+
+            # we always assume that type of the proof is ... = ...
+            if proof is None:
+                proof = eq_hyp
+            else:
+                eq_hyp_type = eq_hyp.type(self.task)
+                proof_type = proof.type(self.task)
+                proof = Apply(
+                            pair_eq,
+                            eq_hyp_type.args[0],
+                            proof_type.args[0],
+                            eq_hyp_type.args[1], eq_hyp_type.args[2],
+                            proof_type.args[1], proof_type.args[2],
+                            eq_hyp,
+                            proof
+                            )
+
+        top.print("final eq hypothesis: ", proof.type(self.task).render(self.task))
+        top.namespace['proof'] = proof
 
         # this maps id of a sub-term to a match result (if exists)
         def replace(context, term):

@@ -19,7 +19,7 @@ class MutInductive:
             # the reason we use typ instead of type here is a consideration for dependent types
             self.typ = typ
 
-        def type(self, environment=None):
+        def type(self, environment=None, context=[]):
             return self.typ
 
     class Inductive:
@@ -30,6 +30,12 @@ class MutInductive:
 
         def type(self, environment=None):
             return self.arity
+
+        def render(self, environment=None):
+            return "%s := %s" % (
+                    self.type(environment).render(environment),
+                    " | ".join(map(lambda c: c.name + ": " + c.type(environment).render(environment), self.constructors))
+                    )
 
 
     def __init__(self, name: 'str', inds: 'Inductive list'):

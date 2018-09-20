@@ -43,6 +43,7 @@ class Term(abc.ABC):
         subterms = self.subterms()
         for i in range(len(subterms)):
             if isinstance(self, ContextTerm) and i == len(subterms) - 1:
+                # if the subterm is a body of LetIn, Lambda or Prod
                 subterms[i] = subterms[i].rels_subst(ctx_values, depth + 1)
             else:
                 subterms[i] = subterms[i].rels_subst(ctx_values, depth)
@@ -233,7 +234,12 @@ class Rel(Term):
         return self
 
     def rels_subst(self, ctx_rels, depth=0):
-        return ctx_rels[ -1 * (depth + 1) ]
+        # for example, given a term with type
+        # forall n, m: nat, n >= m, if we wanna apply it to a single number n = 0, i.e.
+        # we wanna have forall m: nat, 0 >= m
+        # in this case, we we iterate to "n >= m", we have depth = 1, and n is Rel(1), the correct
+        # index is -1 * ((1 - depth) + 1)
+        return ctx_rels[ -1 * ((self.index - depth) + 1) ]
 
 
 class Apply(Term):

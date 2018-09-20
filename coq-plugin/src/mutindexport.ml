@@ -69,7 +69,6 @@ let get_mutinds env =
     let str_list = Names.Mindmap_env.fold begin fun key mutind str_list ->
         try
             let mind_body, _ = mutind in
-            Feedback.msg_info Pp.(str (Names.MutInd.to_string key));
             let str_ind_packets =
                 String.concat ", " (Array.to_list (Array.map get_one_inductive_body mind_body.mind_packets))
             in
@@ -80,7 +79,6 @@ let get_mutinds env =
             in
             str_mind :: str_list
         with (Unimplemented msg) ->
-            (* FIXME deal with template arity *) 
             Feedback.msg_info Pp.(str "error! " ++ str msg);
             str_list
     end global.env_inductives [] in
