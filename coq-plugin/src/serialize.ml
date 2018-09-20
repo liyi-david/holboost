@@ -4,6 +4,8 @@
  *)
 
 exception SerializingFailure of string
+exception Unimplemented of string
+
 
 let write_to_temp_file (content:string) : string =
     let filename = Filename.temp_file "coq_holboost" ".task" in
@@ -37,7 +39,11 @@ let constr2json (c: Constr.t) : string =
         match (kind c) with
         | Rel index -> Printf.sprintf "{ \"type\" : \"rel\", \"index\" : %d }" index
         | Var id -> Printf.sprintf "{ \"type\" : \"var\", \"name\" : \"%s\" }" (Names.Id.to_string id)
-        (* TODO Meta, Evar *)
+        (* FIXME Evar *)
+        | Meta index -> Printf.sprintf "{ \"type\" : \"meta\", \"name\" : %d }" index
+        | Evar (index, arr) -> Printf.sprintf "{ \"type\" : \"evar\", \"index\" : %d, \"constrs\": [ %s ] }"
+            (Evar.repr index)
+            (String.concat ", " Array.(to_list (map convert arr)))
         | Sort sort ->
                 Printf.sprintf "{ \"type\" : \"sort\", \"sort\" : \"%s\"} " (
                     match sort with
@@ -47,7 +53,7 @@ let constr2json (c: Constr.t) : string =
                 )
         (* FIXME Cast *)
         | Cast (c, kind, types) ->
-                Printf.sprintf "{ \"type\" : \"cast\" , \"base_term\" : %s, \"cast_kind\" : \" \", \"guaranteed_type\" : %s }" (convert c) (convert types)
+                Printf.sprintf "{ \"type\" : \"cast\" , \"body\" : %s, \"kind\" : \" \", \"guaranteed_type\" : %s }" (convert c) (convert types)
         | Prod (name, var_type, body) ->
                 Printf.sprintf "{ \"type\" : \"prod\", \"arg_name\": %s, \"arg_type\" : %s, \"body\": %s }" (string_of_nullable_name name)(convert var_type) (convert body)
         | Lambda (name, var_type, body) ->
@@ -87,6 +93,8 @@ let constr2json (c: Constr.t) : string =
                     (convert c)
                     (convert (mkInd case_info.ci_ind))
                     (String.concat ", " cases)
+        | Fix _ ->
+                Printf.sprintf "{ \"type\" : \"fix\" }"
         | _ -> raise (SerializingFailure (Printf.sprintf "unhandled constr type %s" (Pp.string_of_ppcmds (Printer.pr_constr c))))
     in
     try

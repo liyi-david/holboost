@@ -23,6 +23,8 @@ class MatchResult:
                     ", ".join([ "?%s = %s" % (name, self.metavar_map[name].render(environment)) for name in self.metavar_map ])
                     )
 
+        def __str__(self): return self.render()
+
 
     def __init__(self, term):
         self.term = term
@@ -50,9 +52,13 @@ class MatchResult:
                 map(lambda oneresult: oneresult.render(environment), self.matches)
                 )
 
+    def __str__(self): return self.render()
+
+    def __iter__(self): return iter(self.matches)
 
 
-def match_at(pattern, term):
+
+def match_at(pattern, term, environment=None):
     metavar_matched = {}
     alias_matched = {}
 
@@ -68,6 +74,13 @@ def match_at(pattern, term):
                     raise MatchFailure()
             else:
                 # we got a match !
+                # but only after the type check ...
+                if pattern.type is not None:
+                    if environment is None:
+                        raise Exception("no environment is given when performing typed pattern-match processes")
+                    if pattern.type != term.type(environment):
+                        raise MatchFailure()
+
                 metavar_matched[pattern.index] = term
         elif isinstance(pattern, Alias):
             try_match(pattern.sub_pattern, term)
@@ -102,7 +115,7 @@ def match_at(pattern, term):
         return None
 
 
-def match(patterns, term, match_subterm=False):
+def match(patterns, term, match_subterm=False, environment=None):
     """
     @patterns: can be either a single pattern or a list of patterns
     @term: the term to match
@@ -116,7 +129,7 @@ def match(patterns, term, match_subterm=False):
     def iterate(patterns, term):
         nonlocal match_result
         for pattern in patterns:
-            result = match_at(pattern, term)
+            result = match_at(pattern, term, environment=environment)
 
             # here it is import not to iterate on subterms when we have a match on
             # the current term. otherwise matches may intersect and leads to unexpected

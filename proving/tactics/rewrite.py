@@ -23,13 +23,13 @@ def obtain_equality(term):
             return None
         else:
             # result = (prods, term)
-            return ([(term.arg_name, term.arg_type)] + result[0], result[1])
+            return ([term] + result[0], result[1])
     else:
         return None
 
 def generate_task_equality(task: 'Task'):
     equalities = {}
-    for name, const in [ *task.constants.items(), *task.context_variables.items() ]:
+    for name, const in [ *task.constants.items(), *task.variables.items() ]:
         result = obtain_equality(const.type)
         if result is not None:
             prods, term = result

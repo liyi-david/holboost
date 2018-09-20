@@ -22,34 +22,45 @@ class JsonFormat(Format):
             json_item = external_t
 
         def convert(t):
-            if t['type'] == 'sort':
-                sort_map = { 'type' : TYPE, 'set' : SET, 'prop' : PROP }
-                if t['sort'] not in sort_map:
-                    raise JsonConvertError('invalid sort name %s' % t['sort'])
-                return sort_map[t['sort']]
-            elif t['type'] == 'app':
-                args = list(map(convert, t['args']))
-                return Apply(convert(t['func']), *args)
-            elif t['type'] == 'case':
-                return Case()
-            elif t['type'] == 'const':
-                return Const(t['name'])
-            elif t['type'] == 'construct':
-                return Construct(t['mutind_name'], t['ind_index'], t['constructor_index'])
-            elif t['type'] == 'lambda':
-                return Lambda(t['arg_name'], convert(t['arg_type']), convert(t['body']))
-            elif t['type'] == 'letin':
-                return LetIn(t['arg_name'], convert(t['arg_type']), convert(t['arg_body']), convert(t['body']))
-            elif t['type'] == 'ind':
-                return Ind(t['mutind_name'], t['ind_index'])
-            elif t['type'] == 'var':
-                return Var(t['name'])
-            elif t['type'] == 'rel':
-                return Rel(t['index'] - 1)
-            elif t['type'] == 'prod':
-                return Prod(t['arg_name'], convert(t['arg_type']), convert(t['body']))
-            else:
-                raise JsonConvertError('unhandled json node %s' % json.dumps(t))
+            try:
+                if t['type'] == 'sort':
+                    sort_map = { 'type' : TYPE, 'set' : SET, 'prop' : PROP }
+                    if t['sort'] not in sort_map:
+                        raise JsonConvertError('invalid sort name %s' % t['sort'])
+                    return sort_map[t['sort']]
+                elif t['type'] == 'app':
+                    args = list(map(convert, t['args']))
+                    return Apply(convert(t['func']), *args)
+                elif t['type'] == 'case':
+                    return Case()
+                elif t['type'] == 'cast':
+                    return Cast(convert(t['body']), convert(t['guaranteed_type']))
+                elif t['type'] == 'const':
+                    return Const(t['name'])
+                elif t['type'] == 'evar':
+                    # FIXME
+                    print('warn: evar is not fully supported yet')
+                    return Evar()
+                elif t['type'] == 'construct':
+                    return Construct(t['mutind_name'], t['ind_index'], t['constructor_index'])
+                elif t['type'] == 'lambda':
+                    return Lambda(t['arg_name'], convert(t['arg_type']), convert(t['body']))
+                elif t['type'] == 'letin':
+                    return LetIn(t['arg_name'], convert(t['arg_type']), convert(t['arg_body']), convert(t['body']))
+                elif t['type'] == 'ind':
+                    return Ind(t['mutind_name'], t['ind_index'])
+                elif t['type'] == 'var':
+                    return Var(t['name'])
+                elif t['type'] == 'rel':
+                    return Rel(t['index'] - 1)
+                elif t['type'] == 'prod':
+                    return Prod(t['arg_name'], convert(t['arg_type']), convert(t['body']))
+                elif t['type'] == 'fix':
+                    return Const('TBD')
+                else:
+                    raise JsonConvertError('unhandled json node %s' % json.dumps(t))
+            except KeyError as err:
+                raise JsonConvertError('json key error %s in %s' % (err, json.dumps(t)))
 
         return convert(json_item)
 
@@ -63,7 +74,6 @@ class JsonFormat(Format):
                         map(
                             lambda hintrec : RewriteCommand.RewriteHint(
                                 JsonFormat.import_term(hintrec['type']),
-                                JsonFormat.import_term(hintrec['pattern']),
                                 JsonFormat.import_term(hintrec['lemma']),
                                 hintrec['right2left']
                             ),
@@ -74,16 +84,26 @@ class JsonFormat(Format):
 
 
     @staticmethod
+    def import_constant(json_item):
+        return Constant(
+                json_item['constant_name'],
+                JsonFormat.import_term(json_item['constant_type']),
+                None if 'constant_body' not in json_item else JsonFormat.import_term(json_item['constant_body'])
+                )
+
+    @staticmethod
     def import_mutind(json_item):
 
         def import_constructor(json_item):
             return MutInductive.Constructor(
-                    json_item['constructor_name']
+                    json_item['constructor_name'],
+                    JsonFormat.import_term(json_item['constructor_type'])
                     )
 
         def import_ind(json_item):
             return MutInductive.Inductive(
                     json_item['ind_name'],
+                    JsonFormat.import_term(json_item['arity']),
                     [ import_constructor(c) for c in json_item['constructors'] ]
                     )
 
@@ -101,11 +121,14 @@ class JsonFormat(Format):
         else:
             json_item = external_t
 
-        return Task(
+        task = Task(
                 JsonFormat.import_term(json_item['goal']),
-                constants={ c['constant_name'] : Constant(c['constant_name'], JsonFormat.import_term(c['constant_type'])) for c in json_item['constants'] },
-                context_variables = { c['variable_name'] : Constant(c['variable_name'], JsonFormat.import_term(c['variable_type'])) for c in json_item['context'] },
+                constants={ c['constant_name'] : JsonFormat.import_constant(c) for c in json_item['constants'] },
+                variables = { c['variable_name'] : Constant(c['variable_name'], JsonFormat.import_term(c['variable_type'])) for c in json_item['variables'] },
                 mutinds={ c['mutind_name'] : JsonFormat.import_mutind(c) for c in json_item['mutinds'] },
                 command=JsonFormat.import_command(json_item['command'])
                 )
+
+        task.command.task = task
+        return task
 

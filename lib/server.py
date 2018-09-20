@@ -20,6 +20,7 @@ def CoqTaskHandlerFactory(top : 'Top'):
             if self.path == "/prove":
                 data = self.rfile.read(int(self.headers['content-length']))
                 data = data.decode('utf8')
+                top.namespace['debug'] = json.loads(data)
 
                 try:
                     task = JsonFormat.import_task(data)

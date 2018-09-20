@@ -4,6 +4,7 @@
 -Q theory Holboost
 
 src/serialize.ml
+src/mutindexport.ml
 src/taskexport.ml
 src/holboost.ml4
 theory/plugin.v

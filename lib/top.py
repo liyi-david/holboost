@@ -7,6 +7,8 @@ def exec_or_evar(*args):
         eval_result = eval(*args)
         if eval_result is not None:
             print(eval_result)
+    except KeyboardInterrupt:
+        print('command interrupted by user.')
     except SyntaxError:
         exec(*args)
 
