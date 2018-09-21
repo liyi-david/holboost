@@ -1,2 +1,2 @@
-from .rewrite import *
-from .idle import *
+from .rewrite import RewriteCommand
+from .idle import IdleCommand

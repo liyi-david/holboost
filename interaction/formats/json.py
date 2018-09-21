@@ -2,6 +2,7 @@ from interaction.formats.format import Format
 from kernel.declaration import *
 from kernel.term import *
 from kernel.task import Task
+
 from interaction.commands import *
 
 import json
@@ -132,3 +133,68 @@ class JsonFormat(Format):
         task.command.task = task
         return task
 
+    @staticmethod
+    def export_term(term: 'Term', as_dict=False) -> str:
+
+        def convert(term):
+            if isinstance(term, Sort):
+                return { "type": "sort", "sort": term.sort.value }
+            elif isinstance(term, Rel):
+                return { "type": "rel", "index": term.index }
+            elif isinstance(term, Var):
+                # Var must be translated before Const since it is
+                # a subclass of Const
+                return { "type": "var",  "name": term.name }
+            elif isinstance(term, Const):
+                return { "type": "const",  "name": term.name }
+            elif isinstance(term, Ind):
+                return {
+                        "type": "ind",
+                        "mutind_name": term.mutind_name,
+                        "ind_index": term.ind_index
+                        }
+            elif isinstance(term, Construct):
+                return {
+                        "type": "construct",
+                        "mutind_name": term.mutind_name,
+                        "ind_index": term.ind_index,
+                        "constructor_index": term.constructor_index
+                        }
+            # TODO Evar
+            # TODO Cast, Case
+            # TODO Fix, CoFix, Proj
+            elif isinstance(term, Prod):
+                return {
+                        "type": "prod",
+                        "arg_name": term.arg_name,
+                        "arg_type": convert(term.arg_type),
+                        "body": convert(term.body)
+                        }
+            elif isinstance(term, Lambda):
+                return {
+                        "type": "lambda",
+                        "arg_name": term.arg_name,
+                        "arg_type": convert(term.arg_type),
+                        "body": convert(term.body)
+                        }
+            elif isinstance(term, LetIn):
+                return {
+                        "type": "letin",
+                        "arg_name": term.arg_name,
+                        "arg_type": convert(term.arg_type),
+                        "arg_body": convert(term.arg_body),
+                        "body": convert(term.body)
+                        }
+            elif isinstance(term, Apply):
+                return {
+                        "type": "app",
+                        "func": convert(term.func),
+                        "args": list(map(lambda arg: convert(arg), term.args))
+                        }
+            else:
+                raise JsonConvertError('cannot convert term typed %s' % t['type'])
+
+        if as_dict:
+            return convert(term)
+        else:
+            return json.dumps(convert(term))

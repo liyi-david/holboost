@@ -7,3 +7,4 @@ class Command(abc.ABC):
     @abc.abstractmethod
     def run(self, top: 'Top'):
         pass
+

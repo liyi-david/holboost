@@ -108,5 +108,6 @@ class RewriteCommand(Command):
                 Ttuple, a, b, P, proof
                 )
 
-        print(partial_proof.render(self.task))
         print(partial_proof.type(self.task).render(self.task))
+
+        return partial_proof

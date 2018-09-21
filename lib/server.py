@@ -26,13 +26,14 @@ def CoqTaskHandlerFactory(top : 'Top'):
                     task = JsonFormat.import_task(data)
                     top.namespace['task'] = task
 
-                    task.command.run(top)
+                    result = task.command.run(top)
+                    top.print(JsonFormat.export_term(result))
 
-                    # do something ...
                     reply = {
                             "error"    : False,
                             "finished" : True,
                             "msg"      : "",
+                            "feedback" : JsonFormat.export_term(result, as_dict=True)
                             }
 
                 except json.JSONDecodeError as err:
