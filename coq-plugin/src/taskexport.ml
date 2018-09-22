@@ -1,64 +1,73 @@
 open Serialize
 open Mutindexport
+open Yojson
 
 exception ExportFailure of string
 
-let get_rewrite_hints (dbs: string list) : string =
-    let get_in_single_db (db:string) : string list =
+let get_rewrite_hints (dbs: string list) : json =
+    let get_in_single_db (db:string) : json list =
         let open Autorewrite in
         let rules = find_rewrites db in
-        List.fold_left begin fun str_rules rule ->
-            let str_rule = Printf.sprintf
-                "{ \"node\": \"rewrite_rule\", \"type\": %s, \"pattern\": %s, \"lemma\": %s, \"right2left\": %s }"
-                (constr2json rule.rew_type)
-                (constr2json rule.rew_pat)
-                (constr2json rule.rew_lemma)
-                (if rule.rew_l2r then "false" else "true")
+        List.fold_left begin fun json_rules rule ->
+            let json_rule =
+                `Assoc [
+                    ("node", `String "rewrite_rule");
+                    ("type", (constr2json rule.rew_type));
+                    ("pattern", (constr2json rule.rew_pat));
+                    ("lemma", (constr2json rule.rew_lemma));
+                    ("right2left", `Bool rule.rew_l2r)
+                ]
             in
-            str_rule :: str_rules
+            json_rule :: json_rules
         end [] rules
     in
-    let rules = List.fold_left begin fun (rules: string list) (db:string) ->
+    let rules = List.fold_left begin fun (rules: json list) (db:string) ->
         List.append rules (get_in_single_db db)
     end [] dbs in
-    Printf.sprintf "[ %s ]" (String.concat ", " rules)
+    (`List rules)
 
-let get_variables env =
-    let str_list = Environ.fold_named_context begin fun env decl str_list ->
+let get_variables env : json =
+    let var_list = Environ.fold_named_context begin fun env decl var_list ->
         let name = Context.Named.Declaration.get_id decl in
         let name = Names.Id.to_string name in
         let typ  = Context.Named.Declaration.get_type decl in
-        let str_context_variable =
-            Printf.sprintf "{ \"variable_name\" : \"%s\", \"variable_type\" : %s }" name (constr2json typ) in
-        str_context_variable :: str_list
+        let json_context_variable = `Assoc [ ("variable_name", `String name); ("variable_type", (constr2json typ)) ] in
+        json_context_variable :: var_list
     end env ~init:[] in
-    Printf.sprintf "[ %s ]" (String.concat ", " str_list)
+    (`List var_list)
 
-let get_constants env = 
+let get_constants env : json = 
     let open Pre_env in
     let open Declarations in
     let pre_env = Environ.pre_env env in
     let global = pre_env.env_globals in
-    let str_list = Names.Cmap_env.fold begin fun key const str_list ->
+    let const_list = Names.Cmap_env.fold begin fun key const const_list ->
         let constant_name = Names.Constant.to_string key in
         let constant_body, _ = const in
         (
             match constant_body.const_type, constant_body.const_body with
             | RegularArity typ, Def const_body_substituted -> begin
-                let str_constant_type = constr2json typ in
-                let str_constant_body = constr2json (Mod_subst.force_constr const_body_substituted) in
-                (Printf.sprintf "{ \"constant_name\" : \"%s\", \"constant_type\" : %s, \"constant_body\" : %s }" constant_name str_constant_type str_constant_body)
+                let json_constant_type = constr2json typ in
+                let json_constant_body = constr2json (Mod_subst.force_constr const_body_substituted) in
+                `Assoc [
+                    ("constant_name", `String constant_name);
+                    ("constant_type", json_constant_type);
+                    ("constant_body", json_constant_body)
+                ]
             end
             | RegularArity typ, _ -> begin
-                let str_constant_type = constr2json typ in
-                (Printf.sprintf "{ \"constant_name\" : \"%s\", \"constant_type\" : %s }" constant_name str_constant_type)
+                let json_constant_type = constr2json typ in
+                `Assoc [
+                    ("constant_name", `String constant_name);
+                    ("constant_type", json_constant_type)
+                ]
             end
             | _ -> raise (ExportFailure "currently we cannot handle template arity constants.")
         )
-        :: str_list
+        :: const_list
     end
     global.env_constants [] in
-    Printf.sprintf "[ %s ]" (String.concat ", " str_list)
+    `List const_list
 
 (* get_task_and_then
  *
@@ -66,24 +75,25 @@ let get_constants env =
  * the string will be passed to hook for following operations.
  * if cmd is provided, it will be integrated into the task as an additional json field
  *)
-let get_task_and_then ?(cmd:string option = None) (hook: string -> unit) : unit Proofview.tactic =
+let get_task_and_then ?(cmd:json = `Null) (hook: string -> unit) : unit Proofview.tactic =
     Proofview.Goal.enter_one begin fun gl ->
         let env = Proofview.Goal.env gl in
         let _ = Proofview.Goal.sigma gl in
         let goal_concl = Proofview.Goal.concl gl in
-        let str_goal_concl = Serialize.constr2json (EConstr.Unsafe.to_constr goal_concl) in
-        let str_constants = get_constants env in
-        let str_variables = get_variables env in
-        let str_mutinds = get_mutinds env in
-        let str_task = Printf.sprintf
-            "{ \"goal\" : %s, \"constants\" : %s, \"mutinds\": %s, \"variables\" : %s, \"command\" : %s }"
-            str_goal_concl
-            str_constants
-            str_mutinds
-            str_variables
-            (match cmd with Some s -> s | None -> "null")
+        let json_goal_concl = Serialize.constr2json (EConstr.Unsafe.to_constr goal_concl) in
+        let json_constants = get_constants env in
+        let json_variables = get_variables env in
+        let json_mutinds = get_mutinds env in
+        let json_task =
+            `Assoc [
+                ("goal", json_goal_concl);
+                ("constants", json_constants);
+                ("mutinds", json_mutinds);
+                ("variables", json_variables);
+                ("command", cmd)
+            ]
         in begin
-            hook str_task;
+            hook (Yojson.to_string json_task);
             Tacticals.New.tclIDTAC
         end
     end

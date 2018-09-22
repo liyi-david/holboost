@@ -34,26 +34,31 @@ TACTIC EXTEND boom
     end
 ]
 | [ "boom" "autorewrite" "with" ne_preident_list(l) ] -> [
-    let autorewrite_command = Some (
-        Printf.sprintf "{ \"name\" : \"rewrite\", \"hints\" : %s }" (get_rewrite_hints l)
-    ) in
+    let autorewrite_command = `Assoc [
+        ("name", `String "rewrite");
+        ("hints", (get_rewrite_hints l))
+    ] in
     Taskexport.get_task_and_then ~cmd:autorewrite_command begin 
         fun s ->
-            Feedback.msg_info Pp.(str Serialize.(post_string s "localhost:8081"))
+            let resp = Serialize.(post_string s "localhost:8081") in
+            Feedback.msg_info Pp.(str resp);
+            let json = Yojson.Basic.from_string resp in
+            let open Yojson.Basic.Util in
+            ()
     end
 ]
 END;;
 
 VERNAC COMMAND EXTEND Prjson CLASSIFIED AS QUERY
 | [ "Prjson" constr(c) ] -> [
-    Feedback.msg_info Pp.(str (Serialize.constrexpr2json c))
+    Feedback.msg_info Pp.(str Yojson.(to_string (Serialize.constrexpr2json c)))
     ]
 END;;
 
 VERNAC COMMAND EXTEND Send CLASSIFIED AS QUERY
 | [ "Send" constr(c) ] -> [
-    Feedback.msg_info Pp.(str (Serialize.constrexpr2json c));
-    Feedback.msg_info Pp.(str Serialize.(post_string (constrexpr2json c) "localhost:8081"));
+    Feedback.msg_info Pp.(str Yojson.(to_string (Serialize.constrexpr2json c)));
+    Feedback.msg_info Pp.(str Serialize.(post_string Yojson.(to_string (constrexpr2json c)) "localhost:8081"));
     ]
 END;;
 

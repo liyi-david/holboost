@@ -5,7 +5,7 @@ MAKEFILE_COQ=Makefile.coq
 Makefile.coq: _CoqProject
 	coq_makefile -f _CoqProject -o $(MAKEFILE_COQ)
 
-plugin: Makefile.coq
+plugin: Makefile.coq Makefile.coq.local
 	make -f $(MAKEFILE_COQ)
 
 install: plugin
@@ -17,3 +17,4 @@ clean:
 
 .merlin: Makefile.coq
 	make -f $(MAKEFILE_COQ) .merlin
+	echo "PKG yojson" >> .merlin
