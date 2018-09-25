@@ -53,7 +53,7 @@ class JsonFormat(Format):
                 elif t['type'] == 'var':
                     return Var(t['name'])
                 elif t['type'] == 'rel':
-                    return Rel(t['index'] - 1)
+                    return Rel(t['index'])
                 elif t['type'] == 'prod':
                     return Prod(t['arg_name'], convert(t['arg_type']), convert(t['body']))
                 elif t['type'] == 'fix':

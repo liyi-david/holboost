@@ -1,6 +1,6 @@
 open Serialize
 open Mutindexport
-open Yojson
+open Yojson.Basic
 
 exception ExportFailure of string
 
@@ -42,7 +42,9 @@ let get_constants env : json =
     let pre_env = Environ.pre_env env in
     let global = pre_env.env_globals in
     let const_list = Names.Cmap_env.fold begin fun key const const_list ->
+        (* key is actually Constant.t *)
         let constant_name = Names.Constant.to_string key in
+        Declbuf.set constant_name (Declbuf.ConstantDecl key);
         let constant_body, _ = const in
         (
             match constant_body.const_type, constant_body.const_body with
@@ -93,7 +95,7 @@ let get_task_and_then ?(cmd:json = `Null) (hook: string -> unit) : unit Proofvie
                 ("command", cmd)
             ]
         in begin
-            hook (Yojson.to_string json_task);
+            hook (Yojson.Basic.to_string json_task);
             Tacticals.New.tclIDTAC
         end
     end

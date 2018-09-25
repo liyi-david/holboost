@@ -3,6 +3,7 @@
 -R src Holboost
 -Q theory Holboost
 
+src/declbuf.ml
 src/serialize.ml
 src/mutindexport.ml
 src/taskexport.ml

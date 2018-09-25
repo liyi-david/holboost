@@ -41,14 +41,24 @@ TACTIC EXTEND boom
     Taskexport.get_task_and_then ~cmd:autorewrite_command begin 
         fun s ->
             let resp = Serialize.(post_string s "localhost:8081") in
-            Feedback.msg_info Pp.(str resp);
             let json = Yojson.Basic.from_string resp in
             let open Yojson.Basic.Util in
-            ()
+            if (json |> member "error" |> to_bool) then
+                Feedback.msg_error Pp.(str "holboost failed because " ++ str (json |> member "msg" |> to_string))
+            else
+                let ec = Serialize.(json2econstr (json |> member "feedback")) in
+                try
+                    let sigma, env = Pfedit.get_current_context () in
+                    let _, typ = Typing.type_of env sigma ec in
+                    Feedback.msg_info Printer.(pr_econstr ec);
+                    Feedback.msg_info Printer.(pr_econstr typ)
+                with
+                    Not_found -> Feedback.msg_info Pp.(str "failed to print the returned econstr")
     end
 ]
 END;;
 
+(*
 VERNAC COMMAND EXTEND Prjson CLASSIFIED AS QUERY
 | [ "Prjson" constr(c) ] -> [
     Feedback.msg_info Pp.(str Yojson.(to_string (Serialize.constrexpr2json c)))
@@ -61,4 +71,4 @@ VERNAC COMMAND EXTEND Send CLASSIFIED AS QUERY
     Feedback.msg_info Pp.(str Serialize.(post_string Yojson.(to_string (constrexpr2json c)) "localhost:8081"));
     ]
 END;;
-
+*)

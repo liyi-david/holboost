@@ -13,6 +13,7 @@ This project contains the following parts:
 - the coq-plugin is built and tested only under Coq 8.7.1
 - currently Mac OS and Linux are supported
 - rlwrap is required for better interactive-shell experience
+- yojson library (you may install it through opam)
 - Python 3.6+ is required since some static typing annotations are used
 
 ## some assumptions

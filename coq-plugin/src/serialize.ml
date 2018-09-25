@@ -4,9 +4,10 @@
  *)
 
 exception SerializingFailure of string
+exception DeserializingFailure of string
 exception Unimplemented of string
 
-open Yojson
+open Yojson.Basic
 
 let write_to_temp_file (content:string) : string =
     let filename = Filename.temp_file "coq_holboost" ".task" in
@@ -39,7 +40,7 @@ let constr2json (c: Constr.t) : json =
         let open Constr in
         `Assoc begin
             match (kind c) with
-            | Rel index ->  [ ("type", `String "rel"); ("index", `Int index) ] 
+            | Rel index ->  [ ("type", `String "rel"); ("index", `Int (index - 1)) ] 
             | Var id -> [ ("type", `String "var"); ("name", `String (Names.Id.to_string id)) ]
             | Meta index -> [ ("type", `String "meta"); ("name", `Int index) ]
             (* FIXME Evar *)
@@ -96,9 +97,10 @@ let constr2json (c: Constr.t) : json =
                     ]
             (* FIXME Universe is currently ignored *)
             | Const (const, _) ->
+                    let const_name = (Names.Constant.to_string const) in
                     [
                         ("type", `String "const");
-                        ("name", `String (Names.Constant.to_string const))
+                        ("name", `String const_name)
                     ]
             | Ind ((ind, index), _) ->
                     [
@@ -149,6 +151,74 @@ let constrexpr2json (c: Constrexpr.constr_expr) : json =
     let (t, _) = (Constrintern.interp_constr env sigma c) in
     constr2json t
 
-let json2econstr (j: Yojson.json) =
-    let open Yojson.Basic in
-    ""
+let rec json2econstr (ext: json) : EConstr.t =
+    let open Yojson.Basic.Util in
+    let open EConstr in
+    let term_type : string = ext |> member "type" |> to_string in
+    try
+        let result : EConstr.t =
+            match term_type with
+            | "rel" -> mkRel ((ext |> member "index" |> to_int) + 1)
+            | "var" -> mkVar (Names.Id.of_string (ext |> member "name" |> to_string))
+            | "sort" -> mkSort begin
+                let sort_name : string = (ext |> member "sort" |> to_string) in
+                match sort_name with
+                | "prop" -> Sorts.prop
+                | "set"  -> Sorts.set
+                (* FIXME maybe not type1? *)
+                | "type" -> Sorts.type1
+                | _ -> raise (DeserializingFailure Printf.(sprintf "unexpected sort %s" sort_name))
+            end
+            | "prod" ->
+                mkProd (
+                    (Names.Name.mk_name (Names.Id.of_string (ext |> member "arg_name" |> to_string))),
+                    (json2econstr (ext |> member "arg_type")),
+                    (json2econstr (ext |> member "body"))
+                )
+            | "lambda" ->
+                mkLambda (
+                    (Names.Name.mk_name (Names.Id.of_string (ext |> member "arg_name" |> to_string))),
+                    (json2econstr (ext |> member "arg_type")),
+                    (json2econstr (ext |> member "body"))
+                )
+            | "letin" ->
+                mkLetIn (
+                    (Names.Name.mk_name (Names.Id.of_string (ext |> member "arg_name" |> to_string))),
+                    (json2econstr (ext |> member "arg_type")),
+                    (json2econstr (ext |> member "arg_body")),
+                    (json2econstr (ext |> member "body"))
+                )
+            | "app" ->
+                    let json_args : json list = ext |> member "args" |> to_list in
+                    let econstr_args = List.map json2econstr json_args in
+                    mkApp (json2econstr (ext |> member "func"), Array.of_list econstr_args)
+            | "const" ->
+                let name = ext |> member "name" |> to_string in begin
+                    match Declbuf.get name with
+                    | Some (Declbuf.ConstantDecl const) -> mkConst const
+                    | _ -> raise (DeserializingFailure (Printf.sprintf "const %s not found in the buffer." name))
+                end
+            | "ind" ->
+                let name = ext |> member "mutind_name" |> to_string in begin
+                    match Declbuf.get name with
+                    | Some (Declbuf.MutindDecl mutind) -> mkInd (mutind, (ext |> member "ind_index" |> to_int))
+                    | _ -> raise (DeserializingFailure (Printf.sprintf "mutind %s not found in the buffer." name))
+                end
+            | "construct" ->
+                let name = ext |> member "mutind_name" |> to_string in begin
+                    match Declbuf.get name with
+                    | Some (Declbuf.MutindDecl mutind) -> mkConstruct (
+                        (mutind, (ext |> member "ind_index" |> to_int)),
+                        (* IMPORTANT: indexes of constructors start from 1 *)
+                        (ext |> member "constructor_index" |> to_int) + 1
+                    )
+                    | _ -> raise (DeserializingFailure (Printf.sprintf "mutind %s not found in the buffer." name))
+                end
+            | _ -> raise (DeserializingFailure Printf.(sprintf "unsupported term type %s" term_type))
+        in
+            (* HERE is a pre-allocated space for debuging prints ..... *)
+            result
+    with
+        Type_error (msg, _) ->
+            Feedback.msg_info Pp.(str Printf.(sprintf "failed to convert json to econstr because %s: %s" msg (Yojson.Basic.to_string ext)));
+            raise (DeserializingFailure msg)
