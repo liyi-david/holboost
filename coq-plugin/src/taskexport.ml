@@ -77,7 +77,7 @@ let get_constants env : json =
  * the string will be passed to hook for following operations.
  * if cmd is provided, it will be integrated into the task as an additional json field
  *)
-let get_task_and_then ?(cmd:json = `Null) (hook: string -> unit) : unit Proofview.tactic =
+let get_task_and_then ?(cmd:json = `Null) (hook: string -> unit Proofview.tactic) : unit Proofview.tactic =
     Proofview.Goal.enter_one begin fun gl ->
         let env = Proofview.Goal.env gl in
         let _ = Proofview.Goal.sigma gl in
@@ -95,7 +95,6 @@ let get_task_and_then ?(cmd:json = `Null) (hook: string -> unit) : unit Proofvie
                 ("command", cmd)
             ]
         in begin
-            hook (Yojson.Basic.to_string json_task);
-            Tacticals.New.tclIDTAC
+            hook (Yojson.Basic.to_string json_task)
         end
     end

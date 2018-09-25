@@ -4,6 +4,7 @@
 -Q theory Holboost
 
 src/declbuf.ml
+src/debug.ml
 src/serialize.ml
 src/mutindexport.ml
 src/taskexport.ml

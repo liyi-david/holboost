@@ -21,7 +21,7 @@ class RewriteCommand(Command):
             # pat_left : (?1 - 1) + 1, pat_right : ?1
             self.pat_left, self.pat_right = self.equality.args[1], self.equality.args[2]
 
-            print("pattern of %s : %s -> %s" % (self.lemma, self.pat_left, self.pat_right))
+            # print("pattern of %s : %s -> %s" % (self.lemma, self.pat_left, self.pat_right))
 
     def __init__(self, hints, task=None):
         self.hints = hints
@@ -56,7 +56,7 @@ class RewriteCommand(Command):
 
             eq_hyp_args = reversed([one_match.metavar_map[i] for i in range(len(hint.context))])
             eq_hyp = Apply(hint.lemma, *eq_hyp_args)
-            top.print("eq hypothesis: ", eq_hyp.type(self.task).render(self.task))
+            # top.print("eq hypothesis: ", eq_hyp.type(self.task).render(self.task))
 
             # we always assume that type of the proof is ... = ...
             if proof is None:
@@ -74,8 +74,8 @@ class RewriteCommand(Command):
                             proof
                             )
 
-        top.print("final eq hypothesis: ", proof.type(self.task).render(self.task))
-        top.namespace['proof'] = proof
+        # top.print("final eq hypothesis: ", proof.type(self.task).render(self.task))
+        # top.namespace['proof'] = proof
 
         # assuming we need to replace a0, a1, ..., an with b0, ...., bn
         # in the final proof lemma forall T: Type, forall a: T, forall b: T, forall P: T -> Prop, (eq T a b) -> (P b) -> (P a)
@@ -108,6 +108,6 @@ class RewriteCommand(Command):
                 Ttuple, a, b, P, proof
                 )
 
-        print(partial_proof.type(self.task).render(self.task))
+        # print(partial_proof.type(self.task).render(self.task))
 
         return partial_proof

@@ -27,7 +27,6 @@ def CoqTaskHandlerFactory(top : 'Top'):
                     top.namespace['task'] = task
 
                     result = task.command.run(top)
-                    top.print(JsonFormat.export_term(result))
 
                     reply = {
                             "error"    : False,
