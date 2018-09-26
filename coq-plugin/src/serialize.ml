@@ -60,10 +60,16 @@ let constr2json (c: Constr.t) : json =
                         ("type", `String "sort");
                         ("sort", `String sort_name)
                     ]
-            (* FIXME Cast *)
             | Cast (c, kind, types) ->
+                    let hash_kind = match kind with
+                    | VMcast -> 0
+                    | NATIVEcast -> 1
+                    | DEFAULTcast -> 2
+                    | REVERTcast -> 3
+                    in
                     [
                         ("type", `String "cast");
+                        ("cast_kind", `Int hash_kind);
                         ("body", (convert c));
                         ("guaranteed_type", (convert types))
                     ]
@@ -192,6 +198,15 @@ let rec json2econstr (ext: json) : EConstr.t =
                     let json_args : json list = ext |> member "args" |> to_list in
                     let econstr_args = List.map json2econstr json_args in
                     mkApp (json2econstr (ext |> member "func"), Array.of_list econstr_args)
+            | "cast" ->
+                    let cast_kind = match (ext |> member "cast_kind" |> to_int) with
+                    | 0 -> Constr.VMcast
+                    | 1 -> Constr.NATIVEcast
+                    | 2 -> Constr.DEFAULTcast
+                    | 3 -> Constr.REVERTcast
+                    | _ -> raise (DeserializingFailure (Printf.sprintf "unsupported cast index %d" (ext |> member "cast_kind" |> to_int)))
+                    in
+                    mkCast ((json2econstr (ext |> member "body")), cast_kind, (json2econstr (ext |> member "guaranteed_type")))
             | "const" ->
                 let name = ext |> member "name" |> to_string in begin
                     match Declbuf.get name with

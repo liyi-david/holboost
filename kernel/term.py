@@ -84,26 +84,32 @@ SET  = Sort(SortEnum.set)
 
 
 class Cast(Term):
-    def __init__(self, body: 'Term', guaranteed_type: 'Term'):
+
+    def __init__(self, body: 'Term', cast_kind: 'int', guaranteed_type: 'Term'):
+        # cast_kind is a hash
+        # 0 - VMcast, 1 - NATIVEcast, 2 - DEFAULTcast, 3 - REVERTcast
+        # IMPORTANT! it must be consistent with the coq serializer
         self.body = body
+        self.cast_kind = cast_kind
         self.guaranteed_type = guaranteed_type
 
     def type(self, environment, context=[]) -> 'Term':
-        return self.type
+        return self.guaranteed_type
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
+        # FIXME the cast_kind?
         return "%s : %s" % (
                 self.body.render(environment, context, debug),
-                self.typ.render(environment, context, debug)
+                self.guaranteed_type.render(environment, context, debug)
                 )
 
     def __eq__(self, value):
         return isinstance(value, Cast) and \
                 self.body == value.body and \
-                self.typ == value.typ
+                self.guaranteed_type == value.guaranteed_type
 
     def subterms(self):
-        return [self.body, self.typ]
+        return [self.body, self.guaranteed_type]
 
     def subterms_subst(self, subterms):
         return Cast(*subterms)

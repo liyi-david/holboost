@@ -46,7 +46,7 @@ TACTIC EXTEND boom
             let json = Yojson.Basic.from_string resp in
             let open Yojson.Basic.Util in
             if (json |> member "error" |> to_bool) then begin
-                Feedback.msg_error Pp.(str "holboost failed because " ++ str (json |> member "msg" |> to_string));
+                Feedback.msg_info Pp.(str "holboost failed because " ++ str (json |> member "msg" |> to_string));
                 Tacticals.New.tclIDTAC
             end else
                 let ec = Serialize.(json2econstr (json |> member "feedback")) in

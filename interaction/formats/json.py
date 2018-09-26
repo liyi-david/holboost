@@ -35,7 +35,7 @@ class JsonFormat(Format):
                 elif t['type'] == 'case':
                     return Case()
                 elif t['type'] == 'cast':
-                    return Cast(convert(t['body']), convert(t['guaranteed_type']))
+                    return Cast(convert(t['body']), t['cast_kind'], convert(t['guaranteed_type']))
                 elif t['type'] == 'const':
                     return Const(t['name'])
                 elif t['type'] == 'evar':
@@ -130,6 +130,7 @@ class JsonFormat(Format):
                 command=JsonFormat.import_command(json_item['command'])
                 )
 
+
         task.command.task = task
         return task
 
@@ -160,9 +161,15 @@ class JsonFormat(Format):
                         "ind_index": term.ind_index,
                         "constructor_index": term.constructor_index
                         }
-            # TODO Evar
-            # TODO Cast, Case
+            # TODO Evar, Case
             # TODO Fix, CoFix, Proj
+            elif isinstance(term, Cast):
+                return {
+                        "type": "cast",
+                        "body": convert(term.body),
+                        "cast_kind": term.cast_kind,
+                        "guaranteed_type": convert(term.guaranteed_type)
+                        }
             elif isinstance(term, Prod):
                 return {
                         "type": "prod",
