@@ -36,7 +36,6 @@ class RewriteCommand(Command):
         return self.left_pat_map[id(pat)]
 
     def run(self, top):
-        top.print('rewriting starts.')
         patterns = list(map(lambda hint: hint.pat_left, self.hints))
 
         match_result = match(patterns, self.task.goal, match_subterm=True, environment=self.task)

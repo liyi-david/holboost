@@ -1,4 +1,5 @@
 from kernel.environment import Environment
+from time import time
 
 class Task(Environment):
 
@@ -20,6 +21,10 @@ class Task(Environment):
 
     def run(self, top):
         if self.command is not None:
-            return self.command.run(top)
+            t_start = time()
+            result = self.command.run(top)
+            t_total = time() - t_start
+            top.print("command %s finished in %.6f seconds." % (type(self.command), t_total))
+            return result
         else:
             raise Exception("command is missing")
