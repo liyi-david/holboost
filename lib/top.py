@@ -19,9 +19,12 @@ class Top:
         self.namespace = load()
         self.supported_methods = self.namespace.keys()
         self.message_pool = []
+
+        # initalization of the namespace
         self.namespace['list'] = (lambda: print(self.supported_methods))
         self.namespace['log'] = (lambda: print("\n".join(self.message_pool[-5:])))
         self.namespace['query'] = (lambda s: self.query(s))
+        self.namespace['cache'] = {}
 
     def log_message(self, message):
         self.message_pool.append(message)

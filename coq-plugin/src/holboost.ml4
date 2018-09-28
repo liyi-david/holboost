@@ -23,18 +23,9 @@ TACTIC EXTEND boom
 | [ "boom" ] -> [
     Taskexport.get_task_and_then begin
         fun s ->
-            Feedback.msg_info Pp.(str Serialize.(post_string s "localhost:8081"));
             Tacticals.New.tclIDTAC
     end
 ] 
-| [ "boom" "match" "goal" "with" pattern(pat) ] -> [
-    (* FIXME *)
-    Taskexport.get_task_and_then begin
-        fun s ->
-            Feedback.msg_info Pp.(str Serialize.(post_string s "localhost:8081"));
-            Tacticals.New.tclIDTAC
-    end
-]
 | [ "boom" "autorewrite" "with" ne_preident_list(l) ] -> [
     let autorewrite_command = `Assoc [
         ("name", `String "rewrite");
@@ -42,14 +33,13 @@ TACTIC EXTEND boom
     ] in
     Taskexport.get_task_and_then ~cmd:autorewrite_command begin 
         fun s ->
-            let resp = Serialize.(post_string s "localhost:8081") in
-            let json = Yojson.Basic.from_string resp in
+            let resp = Hbsync.(post_json s) in
             let open Yojson.Basic.Util in
-            if (json |> member "error" |> to_bool) then begin
-                Feedback.msg_info Pp.(str "holboost failed because " ++ str (json |> member "msg" |> to_string));
+            if (resp |> member "error" |> to_bool) then begin
+                Feedback.msg_info Pp.(str "holboost failed because " ++ str (resp |> member "msg" |> to_string));
                 Tacticals.New.tclIDTAC
             end else
-                let ec = Serialize.(json2econstr (json |> member "feedback")) in
+                let ec = Serialize.(json2econstr (resp |> member "feedback")) in
                 try
                     let sigma, env = Pfedit.get_current_context () in
                     let _, typ = Typing.type_of env sigma ec in
@@ -81,7 +71,7 @@ END;;
 VERNAC COMMAND EXTEND Send CLASSIFIED AS QUERY
 | [ "Send" constr(c) ] -> [
     Feedback.msg_info Pp.(str Yojson.(to_string (Serialize.constrexpr2json c)));
-    Feedback.msg_info Pp.(str Serialize.(post_string Yojson.(to_string (constrexpr2json c)) "localhost:8081"));
+    Feedback.msg_info Pp.(str Hbsync.(post_json Yojson.(to_string (constrexpr2json c)) "localhost:8081"));
     ]
 END;;
 *)

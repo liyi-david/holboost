@@ -6,6 +6,7 @@
 src/declbuf.ml
 src/debug.ml
 src/serialize.ml
+src/hbsync.ml
 src/mutindexport.ml
 src/taskexport.ml
 src/holboost.ml4

@@ -2,6 +2,7 @@ from proving.pattern.match import *
 from proving.tactics.rewrite import *
 from proving.termopr.tuple import *
 
+from .result import TermResult
 from .command import Command
 
 
@@ -23,12 +24,13 @@ class RewriteCommand(Command):
 
             # print("pattern of %s : %s -> %s" % (self.lemma, self.pat_left, self.pat_right))
 
-    def __init__(self, hints, task=None):
+    def __init__(self, hints):
         self.hints = hints
-        self.task = task
         self.left_pat_map = {}
         for hint in self.hints:
             self.left_pat_map[id(hint.pat_left)] = hint
+
+        Command.__init__(self)
 
     def get_hint_by_left_pattern(self, pat):
         return self.left_pat_map[id(pat)]
@@ -110,4 +112,4 @@ class RewriteCommand(Command):
 
         # print(partial_proof.type(self.task).render(self.task))
 
-        return partial_proof
+        return TermResult(partial_proof)

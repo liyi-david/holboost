@@ -45,28 +45,35 @@ let get_constants env : json =
         (* key is actually Constant.t *)
         let constant_name = Names.Constant.to_string key in
         Declbuf.set constant_name (Declbuf.ConstantDecl key);
-        let constant_body, _ = const in
-        (
-            match constant_body.const_type, constant_body.const_body with
-            | RegularArity typ, Def const_body_substituted -> begin
-                let json_constant_type = constr2json typ in
-                let json_constant_body = constr2json (Mod_subst.force_constr const_body_substituted) in
-                `Assoc [
-                    ("constant_name", `String constant_name);
-                    ("constant_type", json_constant_type);
-                    ("constant_body", json_constant_body)
-                ]
-            end
-            | RegularArity typ, _ -> begin
-                let json_constant_type = constr2json typ in
-                `Assoc [
-                    ("constant_name", `String constant_name);
-                    ("constant_type", json_constant_type)
-                ]
-            end
-            | _ -> raise (ExportFailure "currently we cannot handle template arity constants.")
-        )
-        :: const_list
+        if ((Hbsync.is_builtin constant_name) && !Hbsync.builtin_cached) then begin
+            const_list
+        end
+        else begin
+            let constant_body, _ = const in
+            (
+                match constant_body.const_type, constant_body.const_body with
+                | RegularArity typ, Def const_body_substituted -> begin
+                    let json_constant_type = constr2json typ in
+                    let json_constant_body = constr2json (Mod_subst.force_constr const_body_substituted) in
+                    `Assoc [
+                        ("constant_name", `String constant_name);
+                        ("constant_type", json_constant_type);
+                        ("constant_body", json_constant_body);
+                        ("is_builtin", `Bool (Hbsync.is_builtin constant_name))
+                    ]
+                end
+                | RegularArity typ, _ -> begin
+                    let json_constant_type = constr2json typ in
+                    `Assoc [
+                        ("constant_name", `String constant_name);
+                        ("constant_type", json_constant_type);
+                        ("is_builtin", `Bool (Hbsync.is_builtin constant_name))
+                    ]
+                end
+                | _ -> raise (ExportFailure "currently we cannot handle template arity constants.")
+            )
+            :: const_list
+        end
     end
     global.env_constants [] in
     `List const_list
@@ -77,7 +84,7 @@ let get_constants env : json =
  * the string will be passed to hook for following operations.
  * if cmd is provided, it will be integrated into the task as an additional json field
  *)
-let get_task_and_then ?(cmd:json = `Null) (hook: string -> unit Proofview.tactic) : unit Proofview.tactic =
+let get_task_and_then ?(cmd:json = `Null) (hook: json -> unit Proofview.tactic) : unit Proofview.tactic =
     Proofview.Goal.enter_one begin fun gl ->
         let env = Proofview.Goal.env gl in
         let _ = Proofview.Goal.sigma gl in
@@ -95,6 +102,6 @@ let get_task_and_then ?(cmd:json = `Null) (hook: string -> unit Proofview.tactic
                 ("command", cmd)
             ]
         in begin
-            hook (Yojson.Basic.to_string json_task)
+            hook json_task
         end
     end

@@ -12,36 +12,56 @@ def CoqTaskHandlerFactory(top : 'Top'):
 
         def do_POST(self):
 
+            data = self.rfile.read(int(self.headers['content-length']))
+            data = data.decode('utf8')
+            parsed_data = json.loads(data)
+
+            top.namespace['req'] = data
+
             reply = {
                     "error" : True,
                     "msg"   : "unhandled api url %s" % self.path
                     }
 
-            if self.path == "/prove":
-                data = self.rfile.read(int(self.headers['content-length']))
-                data = data.decode('utf8')
-                top.namespace['debug'] = json.loads(data)
+            if self.path == "/coq":
 
                 try:
-                    task = JsonFormat.import_task(data)
+                    task = JsonFormat.import_task(parsed_data['content'])
+                    task.client = parsed_data['client']
+
+                    top.print("task received with %d constants, %d variables and %d mut-inductives." % (len(task.constants), len(task.variables), len(task.mutinds)))
+
+                    # merge buffered builtin declarations with the task
+                    if task.client in top.namespace['cache']:
+                        task += top.namespace['cache'][task.client]
+
                     top.namespace['task'] = task
 
-                    result = task.command.run(top)
+                    result = task.run(top)
+
+                    if parsed_data['client'] not in top.namespace['cache']:
+                        builtins = task.get_builtins()
+                        if len(builtins.constants) + len(builtins.mutinds) > 0:
+                            top.namespace['cache'][parsed_data['client']] = builtins
+
 
                     reply = {
                             "error"    : False,
                             "finished" : True,
                             "msg"      : "",
-                            "feedback" : JsonFormat.export_term(result, as_dict=True)
+                            # FIXME in certain cases it may not return a term?
+                            "feedback" : JsonFormat.export_command_result(result),
+                            "builtin_cached": parsed_data['client'] in top.namespace['cache']
                             }
 
                 except json.JSONDecodeError as err:
-                    print(data[err.pos - 10:err.pos + 10])
+                    top.print(data[err.pos - 10:err.pos + 10])
                     reply = {
                             "error"    : True,
                             "msg"      : "json decoding failes because %s. for further information please refer to the server log" % str(err)
                             }
                 except JsonConvertError as err:
+                    top.print(str(err))
                     reply = {
                             "error"    : True,
                             "msg"      : str(err)

@@ -9,26 +9,6 @@ exception Unimplemented of string
 
 open Yojson.Basic
 
-let write_to_temp_file (content:string) : string =
-    let filename = Filename.temp_file "coq_holboost" ".task" in
-    let chan = open_out filename in
-    Printf.fprintf chan "%s" content;
-    close_out chan;
-    filename
-
-let post_string (s:string)(target:string) =
-    let temp_file = write_to_temp_file s in
-    let ic = Unix.open_process_in (Printf.sprintf "curl -s http://%s/prove --data @%s" target temp_file) in
-    let all_input = ref "" in begin
-        try
-            while true do
-                all_input := !all_input ^ "\n" ^ (input_line ic)
-            done
-        with
-            End_of_file ->
-                close_in ic
-    end;
-    !all_input
 
 let json_of_nullable_name (name: Names.Name.t) : json =
     match name with

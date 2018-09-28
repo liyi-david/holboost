@@ -1,8 +1,9 @@
 class Constant:
-    def __init__(self, name: 'str', type: 'Term', body=None):
+    def __init__(self, name: 'str', type: 'Term', body=None, is_builtin=False):
         self.name = name
         self.type = type
         self.body = body
+        self.is_builtin=is_builtin
 
     def __str__(self):
         if self.body is None:
@@ -38,6 +39,7 @@ class MutInductive:
                     )
 
 
-    def __init__(self, name: 'str', inds: 'Inductive list'):
+    def __init__(self, name: 'str', inds: 'Inductive list', is_builtin=False):
         self.name = name
         self.inds = inds
+        self.is_builtin=is_builtin

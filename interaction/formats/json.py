@@ -1,9 +1,10 @@
 from interaction.formats.format import Format
 from kernel.declaration import *
 from kernel.term import *
-from kernel.task import Task
+from kernel.task import Task, Environment
 
 from interaction.commands import *
+from interaction.commands.result import *
 
 import json
 
@@ -15,12 +16,9 @@ class JsonConvertError(Exception):
 class JsonFormat(Format):
 
     @staticmethod
-    def import_term (external_t):
-        # external term should be described by json string
-        if isinstance(external_t, str):
-            json_item = json.loads(external_t)
-        else:
-            json_item = external_t
+    def import_term (json_item: 'json'):
+
+        if json_item == None: return None
 
         def convert(t):
             try:
@@ -82,6 +80,10 @@ class JsonFormat(Format):
                         )
                     )
                 )
+        elif json_item['name'] == "connect":
+            return ConnectCommand()
+        else:
+            raise Exception("unknown command %s" % json_item['name'])
 
 
     @staticmethod
@@ -89,7 +91,8 @@ class JsonFormat(Format):
         return Constant(
                 json_item['constant_name'],
                 JsonFormat.import_term(json_item['constant_type']),
-                None if 'constant_body' not in json_item else JsonFormat.import_term(json_item['constant_body'])
+                None if 'constant_body' not in json_item else JsonFormat.import_term(json_item['constant_body']),
+                json_item['is_builtin']
                 )
 
     @staticmethod
@@ -110,32 +113,42 @@ class JsonFormat(Format):
 
         return MutInductive(
                 json_item['mutind_name'],
-                [ import_ind(ind) for ind in json_item['inds'] ]
+                [ import_ind(ind) for ind in json_item['inds'] ],
+                json_item['is_builtin']
                 )
 
 
     @staticmethod
-    def import_task(external_t):
-        # external term should be described by json string
-        if isinstance(external_t, str):
-            json_item = json.loads(external_t)
-        else:
-            json_item = external_t
+    def import_environment(json_item):
+        env = Environment()
+        if 'constants' in json_item:
+            env.constants = { c['constant_name'] : JsonFormat.import_constant(c) for c in json_item['constants'] }
+        if 'variables' in json_item:
+            env.variables = { c['variable_name'] : Constant(c['variable_name'], JsonFormat.import_term(c['variable_type'])) for c in json_item['variables'] }
+        if 'mutinds' in json_item:
+            env.mutinds = { c['mutind_name'] : JsonFormat.import_mutind(c) for c in json_item['mutinds'] }
+
+        return env
+
+
+    @staticmethod
+    def import_task(json_item):
+        env = JsonFormat.import_environment(json_item)
 
         task = Task(
                 JsonFormat.import_term(json_item['goal']),
-                constants={ c['constant_name'] : JsonFormat.import_constant(c) for c in json_item['constants'] },
-                variables = { c['variable_name'] : Constant(c['variable_name'], JsonFormat.import_term(c['variable_type'])) for c in json_item['variables'] },
-                mutinds={ c['mutind_name'] : JsonFormat.import_mutind(c) for c in json_item['mutinds'] },
-                command=JsonFormat.import_command(json_item['command'])
+                env.constants,
+                env.variables,
+                env.mutinds,
+                JsonFormat.import_command(json_item['command'])
                 )
 
 
-        task.command.task = task
         return task
 
+
     @staticmethod
-    def export_term(term: 'Term', as_dict=False) -> str:
+    def export_term(term: 'Term') -> 'json':
 
         def convert(term):
             if isinstance(term, Sort):
@@ -199,9 +212,19 @@ class JsonFormat(Format):
                         "args": list(map(lambda arg: convert(arg), term.args))
                         }
             else:
-                raise JsonConvertError('cannot convert term typed %s' % t['type'])
+                raise JsonConvertError('cannot convert term typed %s' % term['type'])
 
-        if as_dict:
-            return convert(term)
+        return convert(term)
+
+    @staticmethod
+    def export_command_result(result: 'CommandResult'):
+        if isinstance(result, (int, bool, str)):
+            return result
+        elif isinstance(result, TermResult):
+            return JsonFormat.export_term(result.term)
+        elif isinstance(result, EmptyResult):
+            return None
+        elif isinstance(result, DictResult):
+            return { key: JsonFormat.export_command_result(result.dict[key]) for key in result.dict }
         else:
-            return json.dumps(convert(term))
+            raise JsonConvertError('unsupported command result type : %s' % type(result))
