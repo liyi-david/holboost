@@ -25,6 +25,14 @@ class Top:
         self.namespace['log'] = (lambda: print("\n".join(self.message_pool[-5:])))
         self.namespace['query'] = (lambda s: self.query(s))
         self.namespace['cache'] = {}
+        self.namespace['debug'] = self.activate_debug
+        self.namespace['top'] = self
+
+        self.debug_modules = set()
+
+    def activate_debug(self, *modules):
+        self.print("the following modules have been added to the debug list: %s" % str(modules))
+        self.debug_modules = self.debug_modules.union(set(modules))
 
     def log_message(self, message):
         self.message_pool.append(message)
@@ -32,6 +40,11 @@ class Top:
     def print(self, *args):
         print("\rCommand MSG ", *args)
         print("Holboost >>> ", end="", flush=True)
+
+    def debug(self, module, *args):
+        if module in self.debug_modules:
+            print("\rDebug   MSG ", *args)
+            print("Holboost >>> ", end="", flush=True)
 
     def query(self, string):
         if 'task' not in self.namespace:

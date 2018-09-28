@@ -93,7 +93,11 @@ def from_rels(outside_context, term):
             binding = term.get_binding(context)
             if binding in outside_context:
                 # free variable here
-                return Meta(outside_context.index(binding), binding.arg_type)
+                rel_index = outside_context.index(binding)
+                return Meta(
+                        rel_index,
+                        generate(outside_context[:rel_index], binding.arg_type)
+                        )
             else:
                 return term
         elif isinstance(term, Apply):

@@ -5,7 +5,9 @@ from lib.common import *
 autoload = True
 
 class MatchFailure(Exception):
-    pass
+    def __init__(self, pat, term):
+        self.pat = pat
+        self.term = term
 
 class MatchResult:
 
@@ -30,7 +32,6 @@ class MatchResult:
         self.term = term
         # each match is a 3-tuple (pattern, matched, patvar_map)
         self.matches = []
-
     def __add__(self, result_or_tuple):
         raise Exception('unimplemented')
 
@@ -66,40 +67,50 @@ class MatchResult:
 
 
 
-def match_at(pattern, term, environment=None):
+def match_at(pattern, term, environment=None, top=None):
     metavar_matched = {}
     alias_matched = {}
 
     def try_match(pattern, term):
-        # print('matching %s in %s' % (pattern, term))
+        if top is not None:
+            top.debug("match", 'matching %s in %s' % (pattern, term))
+
         if isinstance(pattern, Meta):
             if pattern.index in metavar_matched:
-                if metevar_matched[pattern.index] == term:
+                if metavar_matched[pattern.index] == term:
                     return
                 else:
                     # the same meta variable unfortunately matches
                     # two different terms
-                    raise MatchFailure()
+                    raise MatchFailure(pattern, term)
             else:
                 # we got a match !
                 # but only after the type check ...
                 if pattern.type is not None:
                     if environment is None:
                         raise Exception("no environment is given when performing typed pattern-match processes")
-                    if pattern.type != term.type(environment):
-                        raise MatchFailure()
+
+                    # FIXME double check
+                    try:
+                        try_match(pattern.type, term.type(environment))
+                    except TypingUnclosedError:
+                        raise MatchFailure(pattern, term)
 
                 metavar_matched[pattern.index] = term
         elif isinstance(pattern, Alias):
             try_match(pattern.sub_pattern, term)
             alias_matched[pattern.alias] = term
+        elif isinstance(pattern, Cast):
+            try_match(pattern.body, term)
         # for some non-recursive term, we simply need them to be equal
         elif all_are_same_instances((pattern, term), (Sort, Const, Var, Rel, Construct, Ind)):
             if pattern != term:
-                raise MatchFailure()
+                raise MatchFailure(pattern, term)
         elif all_are_same_instances((pattern, term), (Lambda, LetIn, Prod)):
-            if pattern.arg_name != term.arg_name:
-                raise MatchFailure()
+            # Liyi: I removed the name checking since I think that is not important
+            # and should not make the matching result different
+            # if pattern.arg_name != term.arg_name:
+            #    raise MatchFailure(pattern, term)
 
             try_match(pattern.arg_type, term.arg_type)
             try_match(pattern.body, term.body)
@@ -109,21 +120,22 @@ def match_at(pattern, term, environment=None):
             try_match(pattern.func, term.func)
 
             if len(pattern.args) != len(term.args):
-                raise MatchFailure()
+                raise MatchFailure(pattern, term)
 
             for i in range(len(pattern.args)):
                 try_match(pattern.args[i], term.args[i])
         else:
-            raise MatchFailure()
+            raise MatchFailure(pattern, term)
 
     try:
         try_match(pattern, term)
         return MatchResult.OneMatchResult(pattern, term, metavar_matched, alias_matched)
     except MatchFailure:
+        top.debug("match", "matching failed.")
         return None
 
 
-def match(patterns, term, match_subterm=False, environment=None):
+def match(patterns, term, match_subterm=False, environment=None, top=None):
     """
     @patterns: can be either a single pattern or a list of patterns
     @term: the term to match
@@ -137,7 +149,7 @@ def match(patterns, term, match_subterm=False, environment=None):
     def iterate(patterns, term):
         nonlocal match_result
         for pattern in patterns:
-            result = match_at(pattern, term, environment=environment)
+            result = match_at(pattern, term, environment=environment, top=top)
 
             # here it is import not to iterate on subterms when we have a match on
             # the current term. otherwise matches may intersect and leads to unexpected

@@ -1,6 +1,9 @@
 import abc
 import enum
 
+class TypingUnclosedError(Exception):
+    pass
+
 class Term(abc.ABC):
 
     # if a term is created by a notation, then the way it is rendered depends on the notation
@@ -117,7 +120,7 @@ class Cast(Term):
         return [self.body, self.guaranteed_type]
 
     def subterms_subst(self, subterms):
-        return Cast(*subterms)
+        return Cast(subterms[0], self.cast_kind, subterms[1])
 
 
 class Const(Term):
@@ -209,7 +212,7 @@ class Var(Const):
         if not debug and found:
             return self.name.split('.')[-1]
         else:
-            return "[VAR: %s]" % Const.render(self, debug)
+            return Const.render(self, debug)
 
 
 class Rel(Term):
@@ -219,6 +222,9 @@ class Rel(Term):
 
     def type(self, environment, context=[]) -> 'Term':
         binding = self.get_binding(context)
+        if binding is None:
+            raise TypingUnclosedError()
+
         return binding.arg_type
 
     def render(self, environment=None, context=[], debug=False) -> 'str':

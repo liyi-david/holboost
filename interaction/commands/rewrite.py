@@ -38,7 +38,10 @@ class RewriteCommand(Command):
     def run(self, top):
         patterns = list(map(lambda hint: hint.pat_left, self.hints))
 
-        match_result = match(patterns, self.task.goal, match_subterm=True, environment=self.task)
+        for pat in patterns:
+            top.debug("rewrite", "left pattern: ", pat.render(self.task))
+
+        match_result = match(patterns, self.task.goal, match_subterm=True, environment=self.task, top=top)
 
         # now let us construct the proof-term to apply
         # the basic idea is, if we wanna replace a with b, c with d, then first construct a proof
@@ -59,9 +62,9 @@ class RewriteCommand(Command):
         for one_match in reversed(match_result.matches):
             hint = self.get_hint_by_left_pattern(one_match.pattern)
 
-            eq_hyp_args = reversed([one_match.metavar_map[i] for i in range(len(hint.context))])
+            eq_hyp_args = [one_match.metavar_map[i] for i in range(len(hint.context))]
             eq_hyp = Apply(hint.lemma, *eq_hyp_args)
-            # top.print("eq hypothesis: ", eq_hyp.type(self.task).render(self.task))
+            top.debug("rewrite", "eq hypothesis: ", eq_hyp.render(self.task))
 
             # we always assume that type of the proof is ... = ...
             if proof is None:
@@ -113,6 +116,12 @@ class RewriteCommand(Command):
                 Ttuple, a, b, P, proof
                 )
 
-        # print(partial_proof.type(self.task).render(self.task))
+        top.namespace['matching_result'] = match_result
+
+        top.debug("rewrite", "Ttuple   : ", Ttuple.render(self.task))
+        top.debug("rewrite", "a        : ", a.render(self.task))
+        top.debug("rewrite", "b        : ", b.render(self.task))
+        top.debug("rewrite", "P        : ", P.render(self.task))
+        top.debug("rewrite", "eq_proof : ", proof.render(self.task))
 
         return TermResult(partial_proof)
