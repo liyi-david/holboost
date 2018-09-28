@@ -39,7 +39,12 @@ class Term(abc.ABC):
         return False
 
     def rels_subst(self, ctx_values, depth=0):
-        # TODO DEBUG IT
+        """
+        it is important to figure out how this function works precisely.
+
+        1. it replace all the free variables in `self` by the values given in ctx_values
+        2. depth is used to denote how many bounded variables, i.e. context terms we have
+        """
         subterms = self.subterms()
         for i in range(len(subterms)):
             if isinstance(self, ContextTerm) and i == len(subterms) - 1:
@@ -214,7 +219,7 @@ class Rel(Term):
 
     def type(self, environment, context=[]) -> 'Term':
         binding = self.get_binding(context)
-        return self.arg_type
+        return binding.arg_type
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         binding = self.get_binding(context)
@@ -240,6 +245,10 @@ class Rel(Term):
         return self
 
     def rels_subst(self, ctx_rels, depth=0):
+        # the rel variable is still bounded
+        if self.index < depth:
+            return self
+
         # for example, given a term with type
         # forall n, m: nat, n >= m, if we wanna apply it to a single number n = 0, i.e.
         # we wanna have forall m: nat, 0 >= m
@@ -394,7 +403,10 @@ class Construct(Term):
         self.constructor_index = constructor_index
 
     def type(self, environment, context=[]) -> 'Term':
-        raise Exception('unimplemented')
+        ind = environment.mutinds[self.mutind_name].inds[self.ind_index]
+        ind_type = ind.type(environment)
+        raw_type = ind.constructors[self.constructor_index].type(environment)
+        return raw_type.rels_subst([Ind(self.mutind_name, self.ind_index)])
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         found = False

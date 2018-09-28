@@ -39,8 +39,8 @@ TACTIC EXTEND boom
                 Feedback.msg_info Pp.(str "holboost failed because " ++ str (resp |> member "msg" |> to_string));
                 Tacticals.New.tclIDTAC
             end else
-                let ec = Serialize.(json2econstr (resp |> member "feedback")) in
                 try
+                    let ec = Serialize.(json2econstr (resp |> member "feedback")) in
                     let sigma, env = Pfedit.get_current_context () in
                     let _, typ = Typing.type_of env sigma ec in
                     Debug.debug "autorewrite" Printer.(pr_econstr ec);
@@ -49,6 +49,9 @@ TACTIC EXTEND boom
                 with
                     Not_found ->
                         Feedback.msg_info Pp.(str "failed to print the returned econstr");
+                        Tacticals.New.tclIDTAC
+                    | _ ->
+                        Feedback.msg_info Pp.(str "no rewriting hints were found matched.");
                         Tacticals.New.tclIDTAC
     end
 ]

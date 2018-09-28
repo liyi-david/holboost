@@ -4,3 +4,5 @@ from proving.pattern.match import *
 from proving.termopr.tuple import *
 
 from interaction.formats.json import JsonFormat
+
+test = Apply(Lambda('a', PROP, Rel(0)))

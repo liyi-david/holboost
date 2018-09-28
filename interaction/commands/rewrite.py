@@ -2,7 +2,7 @@ from proving.pattern.match import *
 from proving.tactics.rewrite import *
 from proving.termopr.tuple import *
 
-from .result import TermResult
+from .result import TermResult, EmptyResult
 from .command import Command
 
 
@@ -49,6 +49,10 @@ class RewriteCommand(Command):
         # the proof is located in coq-plugin/theory/plugin.v
         pair_eq = Const('Holboost.plugin.pair_eq')
         proof = None
+
+        if len(match_result.matches) is 0:
+            # no match found, failed to rewrite
+            return EmptyResult()
 
         # it is important to use reversed here, since a pair (a, b, c) is actually constructed as
         # (a, (b, c)) in coq, so first we prove that b, c = b', c' instead of a and a'

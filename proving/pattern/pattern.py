@@ -62,8 +62,6 @@ class Alias(Term):
 def from_rels(outside_context, term):
 
     def generate(context, term):
-        # TODO write an explanation on depth
-
         if isinstance(term, Prod):
             return Prod(
                     term.arg_name,
@@ -85,6 +83,12 @@ def from_rels(outside_context, term):
                     )
         elif isinstance(term, (Sort, Const, Construct, Ind)):
             return term
+        elif isinstance(term, Cast):
+            return Cast(
+                    generate(context, term.body),
+                    term.cast_kind,
+                    generate(context, term.guaranteed_type)
+                    )
         elif isinstance(term, Rel):
             binding = term.get_binding(context)
             if binding in outside_context:
