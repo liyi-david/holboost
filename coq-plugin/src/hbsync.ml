@@ -9,8 +9,9 @@ exception SyncFailure
 
 
 let is_builtin (name:string) : bool =
-    let result = String.equal (String.sub name 0 4) "Coq." in
-    result
+    let result = String.compare (String.sub name 0 4) "Coq." in
+    if result == 0 then true
+    else false
 
 let write_to_temp_file (content:string) : string =
     let filename = Filename.temp_file "coq_holboost" ".task" in
