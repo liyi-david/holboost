@@ -124,4 +124,7 @@ class RewriteCommand(Command):
         top.debug("rewrite", "P        : ", P.render(self.task))
         top.debug("rewrite", "eq_proof : ", proof.render(self.task))
 
+        top.debug("rewrite", "proof    : ", partial_proof.render(self.task))
+        top.debug("rewrite", "prf type : ", partial_proof.type(self.task).render(self.task))
+
         return TermResult(partial_proof)

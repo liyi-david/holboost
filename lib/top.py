@@ -57,6 +57,11 @@ class Top:
                 if name.endswith(string):
                     self.print(name, ": ", task.constants[name].type.render(task))
 
+            # search variables
+            for name in task.variables:
+                if name.endswith(string):
+                    self.print(name, ": ", task.variables[name].type.render(task))
+
             # search mutinds
             for mutind in task.mutinds.values():
                 for ind in mutind.inds:
@@ -75,7 +80,7 @@ class Top:
 
         print("Holboost toploop started.")
         while True:
-            command = input("Holboost >>> ")
+            command = input("\rHolboost >>> ")
             try:
                 exec_or_evar(command, self.namespace)
             except Exception as err:

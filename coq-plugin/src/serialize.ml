@@ -31,14 +31,19 @@ let constr2json (c: Constr.t) : json =
                         ("constrs", `List Array.(to_list (map convert arr)))
                     ]
             | Sort sort ->
-                    let sort_name = match sort with
-                        | Sorts.Prop Sorts.Pos -> "set"
-                        | Sorts.Prop Sorts.Null -> "prop"
-                        | Sorts.Type _ -> "type"
+                    let comment = ref "" in
+                    let sort_name, sort_univ = match sort with
+                        | Sorts.Prop Sorts.Pos -> "set", None
+                        | Sorts.Prop Sorts.Null -> "prop", None
+                        | Sorts.Type univ ->
+                                comment := Pp.string_of_ppcmds (Univ.Universe.pr univ);
+                                "type", Some univ
                     in
                     [
                         ("type", `String "sort");
-                        ("sort", `String sort_name)
+                        ("sort", `String sort_name);
+                        ("univ", Univexport.universe_export sort_univ);
+                        ("comment", `String !comment);
                     ]
             | Cast (c, kind, types) ->
                     let hash_kind = match kind with
@@ -82,19 +87,21 @@ let constr2json (c: Constr.t) : json =
                         ("args", `List Array.(to_list (map begin fun arg -> (convert arg) end args)))
                     ]
             (* FIXME Universe is currently ignored *)
-            | Const (const, _) ->
+            | Const (const, univ_inst) ->
                     let const_name = (Names.Constant.to_string const) in
                     [
                         ("type", `String "const");
-                        ("name", `String const_name)
+                        ("name", `String const_name);
+                        ("univ_inst", Univexport.universe_inst_export univ_inst)
                     ]
-            | Ind ((ind, index), _) ->
+            | Ind ((ind, index), univ_inst) ->
                     [
                         ("type", `String "ind");
                         ("mutind_name", `String (Names.MutInd.to_string ind));
-                        ("ind_index", `Int index)
+                        ("ind_index", `Int index);
+                        ("univ_inst", Univexport.universe_inst_export univ_inst)
                     ]
-            | Construct (((ind, index), constructor_index), _) ->
+            | Construct (((ind, index), constructor_index), univ_inst) ->
                     (*
                      * according to `kernel/names.ml`, indexes of multiple inductives start from 0 while indexes of constructors start from 1.
                      * to simplify the case, here we decrease the indexes of constructors by 1, consequently all indexes in the exported json
@@ -104,7 +111,8 @@ let constr2json (c: Constr.t) : json =
                         ("type", `String "construct");
                         ("mutind_name", `String (Names.MutInd.to_string ind));
                         ("ind_index", `Int index);
-                        ("constructor_index", `Int (constructor_index - 1))
+                        ("constructor_index", `Int (constructor_index - 1));
+                        ("univ_inst", Univexport.universe_inst_export univ_inst)
                     ]
             (* TODO CoFix, Proj *)
             (* FIXME Case *)
@@ -151,8 +159,7 @@ let rec json2econstr (ext: json) : EConstr.t =
                 match sort_name with
                 | "prop" -> Sorts.prop
                 | "set"  -> Sorts.set
-                (* FIXME maybe not type1? *)
-                | "type" -> Sorts.type1
+                | "type" -> Sorts.Type (Univexport.universe_obtain (ext |> member "univ" |> to_int))
                 | _ -> raise (DeserializingFailure Printf.(sprintf "unexpected sort %s" sort_name))
             end
             | "prod" ->
@@ -190,7 +197,15 @@ let rec json2econstr (ext: json) : EConstr.t =
             | "const" ->
                 let name = ext |> member "name" |> to_string in begin
                     match Declbuf.get name with
-                    | Some (Declbuf.ConstantDecl const) -> mkConst const
+                    | Some (Declbuf.ConstantDecl const) -> begin
+                        match (ext |> member "univ_inst") with
+                        | `Null -> mkConst const
+                        | `Int univ_inst_hash -> mkConstU (
+                            const,
+                            EInstance.make (Univexport.universe_inst_obtain univ_inst_hash)
+                        )
+                        | _ -> raise (DeserializingFailure "invalid universe instance hash, neither null nor integer")
+                    end
                     | _ -> raise (DeserializingFailure (Printf.sprintf "const %s not found in the buffer." name))
                 end
             | "ind" ->

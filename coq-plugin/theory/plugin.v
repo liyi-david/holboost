@@ -1,5 +1,6 @@
 Declare ML Module "declbuf".
 Declare ML Module "debug".
+Declare ML Module "univexport".
 Declare ML Module "serialize".
 Declare ML Module "hbsync".
 Declare ML Module "mutindexport".

@@ -20,13 +20,28 @@ class JsonFormat(Format):
 
         if json_item == None: return None
 
+        def add_comment(f):
+            def f_with_comment(t):
+                result = f(t)
+                if 'comment' in t:
+                    result.comment = t['comment']
+
+                return result
+
+            return f_with_comment
+
+        @add_comment
         def convert(t):
             try:
                 if t['type'] == 'sort':
-                    sort_map = { 'type' : TYPE, 'set' : SET, 'prop' : PROP }
-                    if t['sort'] not in sort_map:
+                    if t['sort'] == 'set':
+                        return Sort.mkSet()
+                    elif t['sort'] == 'prop':
+                        return Sort.mkProp()
+                    elif t['sort'] == 'type':
+                        return Sort.mkType(t['univ'])
+                    else:
                         raise JsonConvertError('invalid sort name %s' % t['sort'])
-                    return sort_map[t['sort']]
                 elif t['type'] == 'app':
                     args = list(map(convert, t['args']))
                     return Apply(convert(t['func']), *args)
@@ -35,19 +50,19 @@ class JsonFormat(Format):
                 elif t['type'] == 'cast':
                     return Cast(convert(t['body']), t['cast_kind'], convert(t['guaranteed_type']))
                 elif t['type'] == 'const':
-                    return Const(t['name'])
+                    return Const(t['name'], t['univ_inst'])
                 elif t['type'] == 'evar':
                     # FIXME
                     print('warn: evar is not fully supported yet')
                     return Evar()
                 elif t['type'] == 'construct':
-                    return Construct(t['mutind_name'], t['ind_index'], t['constructor_index'])
+                    return Construct(t['mutind_name'], t['ind_index'], t['constructor_index'], t['univ_inst'])
                 elif t['type'] == 'lambda':
                     return Lambda(t['arg_name'], convert(t['arg_type']), convert(t['body']))
                 elif t['type'] == 'letin':
                     return LetIn(t['arg_name'], convert(t['arg_type']), convert(t['arg_body']), convert(t['body']))
                 elif t['type'] == 'ind':
-                    return Ind(t['mutind_name'], t['ind_index'])
+                    return Ind(t['mutind_name'], t['ind_index'], t['univ_inst'])
                 elif t['type'] == 'var':
                     return Var(t['name'])
                 elif t['type'] == 'rel':
@@ -152,7 +167,7 @@ class JsonFormat(Format):
 
         def convert(term):
             if isinstance(term, Sort):
-                return { "type": "sort", "sort": term.sort.value }
+                return { "type": "sort", "sort": term.sort.value, "univ": term.sort.univ }
             elif isinstance(term, Rel):
                 return { "type": "rel", "index": term.index }
             elif isinstance(term, Var):
@@ -160,19 +175,25 @@ class JsonFormat(Format):
                 # a subclass of Const
                 return { "type": "var",  "name": term.name }
             elif isinstance(term, Const):
-                return { "type": "const",  "name": term.name }
+                return {
+                        "type": "const",
+                        "name": term.name,
+                        "univ_inst": term.univ_inst
+                        }
             elif isinstance(term, Ind):
                 return {
                         "type": "ind",
                         "mutind_name": term.mutind_name,
-                        "ind_index": term.ind_index
+                        "ind_index": term.ind_index,
+                        "univ_inst": term.univ_inst
                         }
             elif isinstance(term, Construct):
                 return {
                         "type": "construct",
                         "mutind_name": term.mutind_name,
                         "ind_index": term.ind_index,
-                        "constructor_index": term.constructor_index
+                        "constructor_index": term.constructor_index,
+                        "univ_inst": term.univ_inst
                         }
             # TODO Evar, Case
             # TODO Fix, CoFix, Proj

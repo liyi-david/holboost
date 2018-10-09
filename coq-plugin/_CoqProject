@@ -5,6 +5,7 @@
 
 src/declbuf.ml
 src/debug.ml
+src/univexport.ml
 src/serialize.ml
 src/hbsync.ml
 src/mutindexport.ml

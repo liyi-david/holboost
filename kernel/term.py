@@ -10,6 +10,9 @@ class Term(abc.ABC):
     # notations have no semantics
     notation: 'Notation' = None
 
+    def __init__(self):
+        self.comment = None
+
     @abc.abstractmethod
     def type(self, environment, context=[]) -> 'Term':
         pass
@@ -41,6 +44,11 @@ class Term(abc.ABC):
 
         return False
 
+    def get_comment(self):
+        if self.comment is None or self.comment == "":
+            return ""
+        return "(* %s *)" % self.comment
+
     def rels_subst(self, ctx_values, depth=0):
         """
         it is important to figure out how this function works precisely.
@@ -66,14 +74,17 @@ class SortEnum(enum.Enum):
 
 
 class Sort(Term):
-    def __init__(self, sort: 'SortEnum'):
+    def __init__(self, sort: 'SortEnum', univ: int = None):
+        Term.__init__(self)
+
         self.sort = sort
+        self.univ = univ
 
     def type(self, environment, context=[]) -> 'Term':
         return Sort(SortEnum.type)
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
-        return self.sort.value
+        return self.sort.value + ("" if self.univ is None else ("@{%d}" % self.univ)) + self.get_comment()
 
     def __eq__(self, value):
         return isinstance(value, Sort) and value.sort == self.sort
@@ -85,15 +96,24 @@ class Sort(Term):
         """ sort contains no sub-term and hence cannot be substituted """
         return self
 
+    @staticmethod
+    def mkProp():
+        return Sort(SortEnum.prop)
 
-TYPE = Sort(SortEnum.type)
-PROP = Sort(SortEnum.prop)
-SET  = Sort(SortEnum.set)
+    @staticmethod
+    def mkSet():
+        return Sort(SortEnum.set)
+
+    @staticmethod
+    def mkType(univ: int):
+        return Sort(SortEnum.type, univ)
 
 
 class Cast(Term):
 
     def __init__(self, body: 'Term', cast_kind: 'int', guaranteed_type: 'Term'):
+        Term.__init__(self)
+
         # cast_kind is a hash
         # 0 - VMcast, 1 - NATIVEcast, 2 - DEFAULTcast, 3 - REVERTcast
         # IMPORTANT! it must be consistent with the coq serializer
@@ -124,8 +144,11 @@ class Cast(Term):
 
 
 class Const(Term):
-    def __init__(self, name: 'str'):
+    def __init__(self, name: 'str', univ_inst: int = None):
+        Term.__init__(self)
+
         self.name = name
+        self.univ_inst = univ_inst
 
     def type(self, environment, context=[]) -> 'Term':
         return environment.constants[self.name].type
@@ -157,6 +180,8 @@ class Const(Term):
 class Case(Term):
     # TODO not finished yet!!
     def __init__(self):
+        Term.__init__(self)
+
         pass
 
     def type(self, environment, context=[]) -> 'Term':
@@ -178,6 +203,8 @@ class Case(Term):
 class Evar(Term):
     # TODO not finished yet!!
     def __init__(self):
+        Term.__init__(self)
+
         pass
 
     def type(self, environment, context=[]) -> 'Term':
@@ -217,6 +244,8 @@ class Var(Const):
 
 class Rel(Term):
     def __init__(self, index: int):
+        Term.__init__(self)
+
         # all indexes in holboost must start from zero !!!!!!
         self.index = index
 
@@ -265,6 +294,8 @@ class Rel(Term):
 
 class Apply(Term):
     def __init__(self, func: 'Term', *args: 'Term'):
+        Term.__init__(self)
+
         self.func = func
         self.args = args
 
@@ -306,6 +337,8 @@ class Apply(Term):
 
 class ContextTerm(Term):
     def __init__(self, arg_name: 'str', arg_type: 'Term', body: 'Term'):
+        Term.__init__(self)
+
         self.arg_name = arg_name
         self.arg_type = arg_type
         self.body = body
@@ -350,6 +383,7 @@ class Prod(ContextTerm):
 class LetIn(ContextTerm):
     def __init__(self, arg_name: 'str', arg_type: 'Term', arg_body: 'Term', body: 'Term'):
         ContextTerm.__init__(self, arg_name, arg_type, body)
+
         self.arg_body = arg_body
 
     def type(self, environment, context=[]) -> 'Term':
@@ -403,10 +437,13 @@ class Lambda(ContextTerm):
 
 
 class Construct(Term):
-    def __init__(self, mutind: 'str', ind_index: int, constructor_index: int):
+    def __init__(self, mutind: 'str', ind_index: int, constructor_index: int, univ_inst = None):
+        Term.__init__(self)
+
         self.mutind_name = mutind
         self.ind_index = ind_index
         self.constructor_index = constructor_index
+        self.univ_inst = univ_inst
 
     def type(self, environment, context=[]) -> 'Term':
         ind = environment.mutinds[self.mutind_name].inds[self.ind_index]
@@ -445,9 +482,12 @@ class Construct(Term):
 
 
 class Ind(Term):
-    def __init__(self, mutind: 'str', ind_index: int):
+    def __init__(self, mutind: 'str', ind_index: int, univ_inst: int = None):
+        Term.__init__(self)
+
         self.mutind_name = mutind
         self.ind_index = ind_index
+        self.univ_inst = univ_inst
 
     def type(self, environment, context=[]) -> 'Term':
         return environment.mutinds[self.mutind_name].inds[self.ind_index].type(environment)
