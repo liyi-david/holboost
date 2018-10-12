@@ -3,12 +3,8 @@
  * 
  *)
 
-exception SerializingFailure of string
-exception DeserializingFailure of string
-exception Unimplemented of string
-
 open Yojson.Basic
-
+open Hbcommon
 
 let json_of_nullable_name (name: Names.Name.t) : json =
     match name with
@@ -35,9 +31,7 @@ let constr2json (c: Constr.t) : json =
                     let sort_name, sort_univ = match sort with
                         | Sorts.Prop Sorts.Pos -> "set", None
                         | Sorts.Prop Sorts.Null -> "prop", None
-                        | Sorts.Type univ ->
-                                comment := Pp.string_of_ppcmds (Univ.Universe.pr univ);
-                                "type", Some univ
+                        | Sorts.Type univ -> "type", Some univ
                     in
                     [
                         ("type", `String "sort");
@@ -140,8 +134,12 @@ let constr2json (c: Constr.t) : json =
     convert c
 
 let constrexpr2json (c: Constrexpr.constr_expr) : json =
-    let env = Global.env () in
-    let sigma = Evd.empty in
+    let sigma, env = begin
+        if Proof_global.there_are_pending_proofs () then
+            Pfedit.get_current_goal_context () 
+        else
+            Evd.empty, Global.env ()
+    end in
     let (t, _) = (Constrintern.interp_constr env sigma c) in
     constr2json t
 
@@ -159,8 +157,8 @@ let rec json2econstr (ext: json) : EConstr.t =
                 match sort_name with
                 | "prop" -> Sorts.prop
                 | "set"  -> Sorts.set
-                | "type" -> Sorts.Type (Univexport.universe_obtain (ext |> member "univ" |> to_int))
-                | _ -> raise (DeserializingFailure Printf.(sprintf "unexpected sort %s" sort_name))
+                | "type" -> Sorts.Type (Univexport.universe_import (ext |> member "univ"))
+                | _ -> raise (DeserializingFailure ("unexpected sort name", ext))
             end
             | "prod" ->
                 mkProd (
@@ -191,28 +189,20 @@ let rec json2econstr (ext: json) : EConstr.t =
                     | 1 -> Constr.NATIVEcast
                     | 2 -> Constr.DEFAULTcast
                     | 3 -> Constr.REVERTcast
-                    | _ -> raise (DeserializingFailure (Printf.sprintf "unsupported cast index %d" (ext |> member "cast_kind" |> to_int)))
+                    | _ -> raise (DeserializingFailure ("unsupported cast index", (ext |> member "cast_kind")))
                     in
                     mkCast ((json2econstr (ext |> member "body")), cast_kind, (json2econstr (ext |> member "guaranteed_type")))
             | "const" ->
                 let name = ext |> member "name" |> to_string in begin
                     match Declbuf.get name with
-                    | Some (Declbuf.ConstantDecl const) -> begin
-                        match (ext |> member "univ_inst") with
-                        | `Null -> mkConst const
-                        | `Int univ_inst_hash -> mkConstU (
-                            const,
-                            EInstance.make (Univexport.universe_inst_obtain univ_inst_hash)
-                        )
-                        | _ -> raise (DeserializingFailure "invalid universe instance hash, neither null nor integer")
-                    end
-                    | _ -> raise (DeserializingFailure (Printf.sprintf "const %s not found in the buffer." name))
+                    | Some (Declbuf.ConstantDecl const) -> mkConst const 
+                    | _ -> raise (DeserializingFailure (Printf.sprintf "const %s not found in the buffer." name, `Null))
                 end
             | "ind" ->
                 let name = ext |> member "mutind_name" |> to_string in begin
                     match Declbuf.get name with
                     | Some (Declbuf.MutindDecl mutind) -> mkInd (mutind, (ext |> member "ind_index" |> to_int))
-                    | _ -> raise (DeserializingFailure (Printf.sprintf "mutind %s not found in the buffer." name))
+                    | _ -> raise (DeserializingFailure (Printf.sprintf "mutind %s not found in the buffer." name, `Null))
                 end
             | "construct" ->
                 let name = ext |> member "mutind_name" |> to_string in begin
@@ -222,13 +212,12 @@ let rec json2econstr (ext: json) : EConstr.t =
                         (* IMPORTANT: indexes of constructors start from 1 *)
                         (ext |> member "constructor_index" |> to_int) + 1
                     )
-                    | _ -> raise (DeserializingFailure (Printf.sprintf "mutind %s not found in the buffer." name))
+                    | _ -> raise (DeserializingFailure (Printf.sprintf "mutind %s not found in the buffer." name, `Null))
                 end
-            | _ -> raise (DeserializingFailure Printf.(sprintf "unsupported term type %s" term_type))
+            | _ -> raise (DeserializingFailure (Printf.sprintf "unsupported term type %s" term_type, `Null))
         in
             (* HERE is a pre-allocated space for debuging prints ..... *)
             result
     with
         Type_error (msg, _) ->
-            Feedback.msg_info Pp.(str Printf.(sprintf "failed to convert json to econstr because %s: %s" msg (Yojson.Basic.to_string ext)));
-            raise (DeserializingFailure msg)
+            raise (DeserializingFailure (msg, ext))

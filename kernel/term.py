@@ -1,6 +1,8 @@
 import abc
 import enum
 
+from .universe import *
+
 class TypingUnclosedError(Exception):
     pass
 
@@ -74,17 +76,25 @@ class SortEnum(enum.Enum):
 
 
 class Sort(Term):
-    def __init__(self, sort: 'SortEnum', univ: int = None):
+    def __init__(self, sort: 'SortEnum', univ: 'Universe' = None):
         Term.__init__(self)
 
         self.sort = sort
         self.univ = univ
 
     def type(self, environment, context=[]) -> 'Term':
-        return Sort(SortEnum.type)
+        if self.sort in (SortEnum.prop, SortEnum.set):
+            return Sort(SortEnum.type)
+        else:
+            if self.univ is None:
+                # TODO
+                return self
+            else:
+                return Sort(SortEnum.type, univ=self.univ + 1)
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
-        return self.sort.value + ("" if self.univ is None else ("@{%d}" % self.univ)) + self.get_comment()
+        return self.sort.value + \
+                ("@{%s}" % self.univ if self.univ is not None else "")
 
     def __eq__(self, value):
         return isinstance(value, Sort) and value.sort == self.sort
@@ -148,13 +158,22 @@ class Const(Term):
         Term.__init__(self)
 
         self.name = name
-        self.univ_inst = univ_inst
+
+        # universe_instances exist in three types of terms: Const, Ind and Construct
+        # it seems that they are used only when the corresponding constant and inductive
+        # is defined by the Polymorphic keyword
+        if univ_inst is None:
+            self.univ_inst = UniverseInstance([])
+        else:
+            self.univ_inst = univ_inst
 
     def type(self, environment, context=[]) -> 'Term':
         return environment.constants[self.name].type
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         found = False
+        univ_inst_str = "@{%s}" % str(self.univ_inst)
+
         try:
             if self.name in environment.constants: found = True
         except:
@@ -166,7 +185,7 @@ class Const(Term):
             # if debug mode is not activated
             return self.name.split('.')[-1]
         else:
-            return self.name
+            return self.name + univ_inst_str
 
     def __eq__(self, value):
         return isinstance(value, Const) and self.name == value.name
@@ -418,7 +437,7 @@ class Lambda(ContextTerm):
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         return "fun ({0}: {1}) => {2}".format(
-                self.arg_name,
+                self.arg_name if self.arg_name is not None else "_",
                 self.arg_type.render(environment, context, debug),
                 self.body.render(environment, context + [self], debug)
                 )
@@ -443,7 +462,10 @@ class Construct(Term):
         self.mutind_name = mutind
         self.ind_index = ind_index
         self.constructor_index = constructor_index
-        self.univ_inst = univ_inst
+        if univ_inst is None:
+            self.univ_inst = UniverseInstance([])
+        else:
+            self.univ_inst = univ_inst
 
     def type(self, environment, context=[]) -> 'Term':
         ind = environment.mutinds[self.mutind_name].inds[self.ind_index]
@@ -463,10 +485,11 @@ class Construct(Term):
             # TODO log
             pass
 
+        univ_inst_str = "@{%s}" % str(self.univ_inst)
         if not debug and found:
             return construct_name
         else:
-            return '_%s_%d_%d_' % (self.mutind_name, self.ind_index, self.constructor_index)
+            return '_%s_%d_%d_' % (self.mutind_name, self.ind_index, self.constructor_index) + univ_inst_str
 
     def __eq__(self, value):
         return isinstance(value, Construct) and \
@@ -487,7 +510,10 @@ class Ind(Term):
 
         self.mutind_name = mutind
         self.ind_index = ind_index
-        self.univ_inst = univ_inst
+        if univ_inst is None:
+            self.univ_inst = UniverseInstance([])
+        else:
+            self.univ_inst = univ_inst
 
     def type(self, environment, context=[]) -> 'Term':
         return environment.mutinds[self.mutind_name].inds[self.ind_index].type(environment)
@@ -495,6 +521,7 @@ class Ind(Term):
     def render(self, environment=None, context=[], debug=False) -> 'str':
         found = False
         ind_name = None
+        univ_inst_str = "@{%s}" % str(self.univ_inst)
 
         try:
             if self.mutind_name in environment.mutinds:
@@ -507,7 +534,7 @@ class Ind(Term):
         if not debug and found:
             return ind_name
         else:
-            return '_%s_%d_' % (self.mutind_name, self.ind_index)
+            return '_%s_%d_' % (self.mutind_name, self.ind_index) + univ_inst_str
 
     def __eq__(self, value):
         return isinstance(value, Ind) and \

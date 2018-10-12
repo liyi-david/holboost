@@ -3,6 +3,7 @@
 -R src Holboost
 -Q theory Holboost
 
+src/hbcommon.ml
 src/declbuf.ml
 src/debug.ml
 src/univexport.ml

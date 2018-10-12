@@ -1,3 +1,4 @@
+Declare ML Module "hbcommon".
 Declare ML Module "declbuf".
 Declare ML Module "debug".
 Declare ML Module "univexport".

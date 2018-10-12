@@ -2,6 +2,7 @@ from interaction.formats.format import Format
 from kernel.declaration import *
 from kernel.term import *
 from kernel.task import Task, Environment
+from kernel.universe import *
 
 from interaction.commands import *
 from interaction.commands.result import *
@@ -39,7 +40,7 @@ class JsonFormat(Format):
                     elif t['sort'] == 'prop':
                         return Sort.mkProp()
                     elif t['sort'] == 'type':
-                        return Sort.mkType(t['univ'])
+                        return Sort.mkType(Universe.from_json(t['univ']))
                     else:
                         raise JsonConvertError('invalid sort name %s' % t['sort'])
                 elif t['type'] == 'app':
@@ -50,19 +51,19 @@ class JsonFormat(Format):
                 elif t['type'] == 'cast':
                     return Cast(convert(t['body']), t['cast_kind'], convert(t['guaranteed_type']))
                 elif t['type'] == 'const':
-                    return Const(t['name'], t['univ_inst'])
+                    return Const(t['name'], UniverseInstance.from_json(t['univ_inst']))
                 elif t['type'] == 'evar':
                     # FIXME
                     print('warn: evar is not fully supported yet')
                     return Evar()
                 elif t['type'] == 'construct':
-                    return Construct(t['mutind_name'], t['ind_index'], t['constructor_index'], t['univ_inst'])
+                    return Construct(t['mutind_name'], t['ind_index'], t['constructor_index'], UniverseInstance.from_json(t['univ_inst']))
                 elif t['type'] == 'lambda':
                     return Lambda(t['arg_name'], convert(t['arg_type']), convert(t['body']))
                 elif t['type'] == 'letin':
                     return LetIn(t['arg_name'], convert(t['arg_type']), convert(t['arg_body']), convert(t['body']))
                 elif t['type'] == 'ind':
-                    return Ind(t['mutind_name'], t['ind_index'], t['univ_inst'])
+                    return Ind(t['mutind_name'], t['ind_index'], UniverseInstance.from_json(t['univ_inst']))
                 elif t['type'] == 'var':
                     return Var(t['name'])
                 elif t['type'] == 'rel':
@@ -97,6 +98,8 @@ class JsonFormat(Format):
                 )
         elif json_item['name'] == "connect":
             return ConnectCommand()
+        elif json_item['name'] == "check":
+            return CheckCommand(json_item['id'], JsonFormat.import_term(json_item['term']))
         else:
             raise Exception("unknown command %s" % json_item['name'])
 
@@ -167,7 +170,7 @@ class JsonFormat(Format):
 
         def convert(term):
             if isinstance(term, Sort):
-                return { "type": "sort", "sort": term.sort.value, "univ": term.sort.univ }
+                return { "type": "sort", "sort": term.sort.value, "univ": term.sort.univ.to_json() }
             elif isinstance(term, Rel):
                 return { "type": "rel", "index": term.index }
             elif isinstance(term, Var):
@@ -178,14 +181,14 @@ class JsonFormat(Format):
                 return {
                         "type": "const",
                         "name": term.name,
-                        "univ_inst": term.univ_inst
+                        "univ_inst": term.univ_inst.to_json()
                         }
             elif isinstance(term, Ind):
                 return {
                         "type": "ind",
                         "mutind_name": term.mutind_name,
                         "ind_index": term.ind_index,
-                        "univ_inst": term.univ_inst
+                        "univ_inst": term.univ_inst.to_json()
                         }
             elif isinstance(term, Construct):
                 return {
@@ -193,7 +196,7 @@ class JsonFormat(Format):
                         "mutind_name": term.mutind_name,
                         "ind_index": term.ind_index,
                         "constructor_index": term.constructor_index,
-                        "univ_inst": term.univ_inst
+                        "univ_inst": term.univ_inst.to_json()
                         }
             # TODO Evar, Case
             # TODO Fix, CoFix, Proj
@@ -239,7 +242,9 @@ class JsonFormat(Format):
 
     @staticmethod
     def export_command_result(result: 'CommandResult'):
-        if isinstance(result, (int, bool, str)):
+        if result is None:
+            return None
+        elif isinstance(result, (int, bool, str)):
             return result
         elif isinstance(result, TermResult):
             return JsonFormat.export_term(result.term)

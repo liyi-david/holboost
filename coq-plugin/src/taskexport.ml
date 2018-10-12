@@ -105,3 +105,20 @@ let get_task_and_then ?(cmd:json = `Null) (hook: json -> unit Proofview.tactic) 
             hook json_task
         end
     end
+
+let get_nonproof_task_and_then ?(cmd:json = `Null) (hook: json -> 'a) : 'a =
+    let env = Global.env () in
+    let json_constants = get_constants env in
+    let json_variables = get_variables env in
+    let json_mutinds = get_mutinds env in
+    let json_task =
+        `Assoc [
+            ("goal", `Null);
+            ("constants", json_constants);
+            ("mutinds", json_mutinds);
+            ("variables", json_variables);
+            ("command", cmd)
+        ]
+    in begin
+        hook json_task
+    end
