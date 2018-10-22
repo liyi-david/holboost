@@ -8,3 +8,9 @@ Polymorphic Definition ptyp {T:Type} (_:T) := T.
 
 Definition Typ1 := typ Type.
 
+Boom Debug On.
+
+Definition T1 := Type.
+Definition T2 := Type.
+
+Boom Print Universes.
