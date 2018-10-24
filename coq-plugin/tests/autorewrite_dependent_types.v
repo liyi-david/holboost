@@ -36,6 +36,8 @@ Proof.
   auto.
 Defined.
 
+Boom Print TH.
+
 Goal forall (A1 A2:Type) (lst1: A1 * A1) (lst2: A2 * A2), f nat A1 lst1 = f nat A2 lst2.
 Proof.
     intros.
@@ -53,5 +55,3 @@ Proof.
 *)
     boom autorewrite with wtf.
     Boom Print Universes.
-    auto.
-Qed.

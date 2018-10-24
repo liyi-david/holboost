@@ -1,7 +1,8 @@
 """
 support universes in python, currently only template polymorphism is supported
 """
-
+from enum import Enum, unique
+from itertools import product
 import abc
 
 class Level(metaclass=abc.ABCMeta):
@@ -31,8 +32,28 @@ class Level(metaclass=abc.ABCMeta):
         return not (self == lvl)
 
 
+class LevelConstraint:
+
+    @unique
+    class ExprType(Enum):
+        leq = "<="
+        lt = "<"
+        eq = "=="
+
+    def __init__(self, l, opr, r):
+        self.l = l
+        self.r = r
+        self.opr = LevelConstraint.ExprType(opr)
+
+    def __str__(self):
+        return "%s %s %s" % (str(self.l), self.opr.value, str(self.r))
+
+
 class Universe:
     def __init__(self, exprs):
+        """
+        @param exprs: a dictionary that maps levels to their offsets
+        """
         self.exprs = exprs
 
     def __add__(self, n):
@@ -40,6 +61,48 @@ class Universe:
                 lvl : self.exprs[lvl] + 1 for lvl in self.exprs
                 }
         return Universe(newexprs)
+
+    # the following overwritten functions are used to generate universe constraints (i.e. level constraints)
+    def __le__(self, univ):
+        constraints = []
+        for l, r in product(self.exprs, univ.exprs):
+            """
+            suppose the the left expr is (l, offl), right expr is (r, offr)
+            l + offl <= r + offr <->
+            l + (offl - offr) <= r
+            in caes (offl - offr) is 0 or 1, we can generate the cooresponding formula
+            """
+            offset_diff = self.exprs[l] - univ.exprs[r]
+            if offset_diff == 0:
+                constraints.append(LevelConstraint(l, "<=", r))
+            elif offset_diff == 1:
+                constraints.append(LevelConstraint(l, "<", r))
+            else:
+                raise Exception("cannot resolve %s <= %s" % (str(l), str(r)))
+
+        return constraints
+
+    def __lt__(self, univ):
+        constraints = []
+        for l, r in product(self.exprs, univ.exprs):
+            """
+            suppose the the left expr is (l, offl), right expr is (r, offr)
+            l + offl < r + offr <->
+            l + (offl - offr) < r
+            in caes (offl - offr) is 0 or -1, we can generate the cooresponding formula
+            """
+            offset_diff = self.exprs[l] - univ.exprs[r]
+            if offset_diff == 0:
+                constraints.append(LevelConstraint(l, "<", r))
+            elif offset_diff == -1:
+                constraints.append(LevelConstraint(l, "<=", r))
+            else:
+                raise Exception("cannot resolve %s < %s" % (str(l), str(r)))
+
+        return constraints
+
+    def __eq__(self, univ):
+        raise Exception("unimplemented yet")
 
     @staticmethod
     def from_json(json):
@@ -71,7 +134,10 @@ class UniverseInstance:
         return list(map(lambda level: level.to_json(), self.levels))
 
     def __str__(self):
-        return ",".join(map(lambda lvl: str(lvl), self.levels))
+        if len(self.levels) > 0:
+            return "@{" + ",".join(map(lambda lvl: str(lvl), self.levels)) + "}"
+        else:
+            return ""
 
 
 """

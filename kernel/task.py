@@ -3,6 +3,11 @@ from time import time
 
 class Task(Environment):
 
+    # the current running task
+    # it should be extended to support parallel execution in the future
+    # in this case, it may be rewritten as a dict mapping session to tasks
+    current = None
+
     def __init__(self, goal, constants={}, variables={}, mutinds={}, command=None, client=None):
         self.goal = goal
         self.command = command
@@ -17,11 +22,12 @@ class Task(Environment):
                 len(self.constants),
                 len(self.mutinds),
                 len(self.variables)
-                ) + "[] |- %s" % (self.goal.render(self))
+                ) + "[] |- %s" % ("None" if self.goal is None else self.goal.render(self))
 
     def run(self, top):
         if self.command is not None:
             t_start = time()
+            Task.current = self
             result = self.command.run(top)
             t_total = time() - t_start
             top.print("command %s finished in %.6f seconds." % (type(self.command), t_total))

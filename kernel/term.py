@@ -1,7 +1,10 @@
 import abc
 import enum
 
+from .task import Task
 from .universe import *
+
+from lib.common import all_are_same_instances, one_of_them_is
 
 class TypingUnclosedError(Exception):
     pass
@@ -20,6 +23,25 @@ class Term(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def check(self, environment, context=[]) -> 'Term * list(LevelConstraint)':
+        """
+        when `type` is called, we always assume that the term itself is type-safe. however, sometimes
+        we manually construct a term (not imported from Coq or other tools), in this case we need to
+        check the type-safety of this term.
+
+        the function returns a tuple which includes:
+
+            - the type of this term, should be exactly the same with the result of `type`
+            - a list of level constraints that describe the side effect
+
+        """
+        pass
+
+    def side_effects(self, environment, context=[]):
+        _, s = self.check(environment, context)
+        return s
+
+    @abc.abstractmethod
     def render(self, environment=None, context=[], debug=False) -> 'str':
         pass
 
@@ -29,7 +51,10 @@ class Term(abc.ABC):
 
     @abc.abstractmethod
     def subterms(self):
-        """ this function obtains all subterms in this term """
+        """
+        this function obtains all subterms in this term, it has to satisfy that
+        t.subterms_subst(t.subterms()) == t
+        """
         pass
 
     @abc.abstractmethod
@@ -38,13 +63,42 @@ class Term(abc.ABC):
         pass
 
     def __str__(self) -> 'str':
-        return self.render()
+        return self.render(Task.current)
 
     def istype(self, environment=None) -> 'bool':
         if isinstance(self.type(environment), Sort) and self.type(environment).sort is SortEnum.type:
             return True
 
         return False
+
+    # def side_effect(self, environment, context=[]):
+        # """
+        # this function locates all sub-terms of `self`, calculating their side effects and return
+        # them as a list.
+
+        # if you need to implement a term where side effects come from both itself and its sub-terms,
+        # please overwrite side_effect_self instead of side_effect
+        # """
+        # side_effect = []
+        # for t in self.subterms():
+            # side_effect += t.side_effect(environment, context=context)
+
+        # side_effect += self.side_effect_self(environment, context=context)
+        # return side_effect
+
+    # def side_effect_self(self, environment, context=[]):
+        # """
+        # overwrite this function to implement side-effects on different terms
+        # """
+        # return []
+
+    # def unfold(self, environment, context=[]):
+        # if self.subterms() == []:
+            # return self
+        # else:
+            # return self.subterms_subst(
+                    # list(map(lambda t: t.unfold(environment, context), self.subterms()))
+                    # )
 
     def get_comment(self):
         if self.comment is None or self.comment == "":
@@ -92,6 +146,9 @@ class Sort(Term):
             else:
                 return Sort(SortEnum.type, univ=self.univ + 1)
 
+    def check(self, environment, context=[]) -> 'Term * set(LevelConstraint)':
+        return self.type(environment, context), set()
+
     def render(self, environment=None, context=[], debug=False) -> 'str':
         return self.sort.value + \
                 ("@{%s}" % self.univ if self.univ is not None else "")
@@ -134,10 +191,30 @@ class Cast(Term):
     def type(self, environment, context=[]) -> 'Term':
         return self.guaranteed_type
 
+    def check(self, environment, context=[]):
+        term_type, term_side_effect = self.body.check(environment, context)
+        _, guaranteed_side_effect = self.guaranteed_type.check(environment, context)
+
+        def is_subtype(l, r):
+            """
+            return a set of side effects if l < r and raise Exception otherwise
+            """
+            if all_are_same_instances((l, r), Sort):
+                return (l.univ <= r.univ)
+            elif isinstance(l, Const):
+                return is_subtype(l.unfold(environment, context), r)
+            elif isinstance(r, Const):
+                return is_subtype(l, r.unfold(environment, context))
+            else:
+                raise Exception("unimplemented subtyping %s : %s" % (l.render(environment), r.render(environment)))
+
+        return self.guaranteed_type, is_subtype(term_type, self.guaranteed_type)
+
     def render(self, environment=None, context=[], debug=False) -> 'str':
-        # FIXME the cast_kind?
-        return "%s : %s" % (
+        kind_strs = [ "<:", "<<:", ":" ]
+        return "%s %s %s" % (
                 self.body.render(environment, context, debug),
+                kind_strs[self.cast_kind],
                 self.guaranteed_type.render(environment, context, debug)
                 )
 
@@ -145,6 +222,11 @@ class Cast(Term):
         return isinstance(value, Cast) and \
                 self.body == value.body and \
                 self.guaranteed_type == value.guaranteed_type
+
+    # def side_effect_self(self, environment, context=[]):
+        # type_unfold = self.body.type(environment, context=context).unfold(environment, context)
+        # guaranteed_type_unfold = self.guaranteed_type.unfold(environment, context)
+        # return (type_unfold.univ <= guaranteed_type_unfold.univ)
 
     def subterms(self):
         return [self.body, self.guaranteed_type]
@@ -170,20 +252,27 @@ class Const(Term):
     def type(self, environment, context=[]) -> 'Term':
         return environment.constants[self.name].type
 
+    def check(self, environment, context=[]):
+        if self.name not in environment.constants:
+            raise TypingUnclosedError("constant %s not found in the given environment" % self.name)
+
+        return environment.constants[self.name].type, set()
+
     def render(self, environment=None, context=[], debug=False) -> 'str':
         found = False
-        univ_inst_str = "@{%s}" % str(self.univ_inst)
+        univ_inst_str = str(self.univ_inst)
 
         try:
-            if self.name in environment.constants: found = True
-        except:
+            if self.name in environment.constants:
+                found = True
+        except KeyError:
             # TODO add log to the top!
             pass
 
         if not debug and found:
             # for Coq.Init.Peano.gt we only return `gt`
             # if debug mode is not activated
-            return self.name.split('.')[-1]
+            return self.name.split('.')[-1] + univ_inst_str
         else:
             return self.name + univ_inst_str
 
@@ -196,6 +285,13 @@ class Const(Term):
     def subterms_subst(self, subterms):
         return self
 
+    def unfold(self, environment, context=[]):
+        if self.name not in environment.constants:
+            raise TypingUnclosedError("constant %d not found in the given environment" % self.name)
+        else:
+            return environment.constants[self.name].body
+
+
 class Case(Term):
     # TODO not finished yet!!
     def __init__(self):
@@ -204,6 +300,9 @@ class Case(Term):
         pass
 
     def type(self, environment, context=[]) -> 'Term':
+        raise Exception('unimplemented')
+
+    def check(self, environment, context=[]) -> 'Term':
         raise Exception('unimplemented')
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
@@ -229,6 +328,9 @@ class Evar(Term):
     def type(self, environment, context=[]) -> 'Term':
         raise Exception('unimplemented')
 
+    def check(self, environment, context=[]) -> 'Term':
+        raise Exception('unimplemented')
+
     def render(self, environment=None, context=[], debug=False) -> 'str':
         return 'EVAR'
 
@@ -244,21 +346,18 @@ class Evar(Term):
 
 class Var(Const):
 
-    def type(self, environment) -> 'Term':
+    def type(self, environment, context=[]) -> 'Term':
+        if self.name not in environment.variables:
+            raise TypingUnclosedError("find variable %s not found in the given environment" % self.name)
+
         return environment.variables[self.name].type
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
-        found = False
-        try:
-            if self.name in environment.variables: found = True
-        except:
-            # TODO add log to the top!
-            pass
+    def check(self, environment, context=[]):
+        return self.type(environment, context), []
 
-        if not debug and found:
-            return self.name.split('.')[-1]
-        else:
-            return Const.render(self, debug)
+    def render(self, environment=None, context=[], debug=False) -> 'str':
+        univ_inst_str = str(self.univ_inst)
+        return self.name + univ_inst_str
 
 
 class Rel(Term):
@@ -274,6 +373,9 @@ class Rel(Term):
             raise TypingUnclosedError()
 
         return binding.arg_type
+
+    def check(self, environment, context=[]):
+        return self.type(environment, context), []
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         binding = self.get_binding(context)
@@ -319,21 +421,43 @@ class Apply(Term):
         self.args = args
 
     def type(self, environment, context=[]) -> 'Term':
-        func_type = self.func.type(environment)
-
         # if the type of func is A -> B -> C and there are two arguments, then the type of the whole term
         # should be C
         # if there is only one argument, it should be B -> C
         # ..
 
         typ = self.func.type(environment, context)
-        for i in range(len(self.args)): typ = typ.body
+        for i in range(len(self.args)):
+            while isinstance(typ, Const):
+                typ = typ.unfold(environment, context)
+
+            typ = typ.body
 
         # if there are no rel variables in `typ`, that's it
         # otherwise it is a dependent type
         # in this case we will replace the rels in the type term with the arguments applied to this function
 
         return typ.rels_subst(self.args)
+
+    def check(self, environment, context=[]):
+        typ = self.func.type(environment, context)
+        side_effects = []
+
+        for arg in self.args:
+            while isinstance(typ, Const):
+                typ = typ.unfold(environment, context)
+
+            if isinstance(typ, Prod):
+                """
+                if f : A -> B is applied to a, i.e. (f a), we need to make sure (a : A)
+                """
+                side_effects += Cast(arg, 0, typ.arg_type).side_effects(environment, context)
+                typ = typ.body
+            else:
+                raise TypingUnclosedError("cannot apply %s to %s" % (func_type.render(environment, context), arg.render(environment, context)))
+
+        return typ.rels_subst(self.args), side_effects
+
 
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
@@ -365,12 +489,13 @@ class ContextTerm(Term):
 
 class Prod(ContextTerm):
     def type(self, environment, context=[]) -> 'Term':
-        # FIXME have a double check?
+        # TODO this is not correct
         return TYPE
 
+    def check(self, environment, context=[]):
+        raise Exception("unimplemented")
+
     def render(self, environment=None, context=[], debug=False) -> 'str':
-        # TODO
-        # if self.id exists but not used in the sub term, we should also print arrow form
         if self.arg_name is None:
             # arrow form
             return "{0} -> {1}".format(
@@ -408,6 +533,13 @@ class LetIn(ContextTerm):
     def type(self, environment, context=[]) -> 'Term':
         return self.body.type(environment, context + [self])
 
+    def check(self, environment, context=[]):
+        body_typ, body_sideff = self.body.check(environment, context + [self])
+        _, arg_sideff = self.arg_type.check(environment, context)
+        return body_typ, body_sideff + \
+                arg_sideff + \
+                Cast(arg_body, 0, arg_type).side_effects(environment, context)
+
     def render(self, environment=None, context=[], debug=False) -> 'str':
         return "let {0} : {1} := {2} in {3}".format(
                 self.arg_name,
@@ -434,6 +566,11 @@ class Lambda(ContextTerm):
 
     def type(self, environment, context=[]) -> 'Term':
         return Prod(None, self.arg_type, self.body.type(environment, context + [self]))
+
+    def check(self, environment, context=[]):
+        _, arg_sideff = self.arg_type.check(environment, context=[])
+        body_typ, body_sideff = self.body.check(environment, context + [self])
+        return Prod(None, self.arg_type, body_typ), arg_sideff + body_sideff
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         return "fun ({0}: {1}) => {2}".format(
@@ -473,6 +610,9 @@ class Construct(Term):
         raw_type = ind.constructors[self.constructor_index].type(environment)
         return raw_type.rels_subst([Ind(self.mutind_name, self.ind_index)])
 
+    def check(self, environment, context=[]):
+        return self.type(environment, context), []
+
     def render(self, environment=None, context=[], debug=False) -> 'str':
         found = False
         construct_name = None
@@ -485,9 +625,9 @@ class Construct(Term):
             # TODO log
             pass
 
-        univ_inst_str = "@{%s}" % str(self.univ_inst)
+        univ_inst_str = str(self.univ_inst)
         if not debug and found:
-            return construct_name
+            return construct_name + univ_inst_str
         else:
             return '_%s_%d_%d_' % (self.mutind_name, self.ind_index, self.constructor_index) + univ_inst_str
 
@@ -518,10 +658,13 @@ class Ind(Term):
     def type(self, environment, context=[]) -> 'Term':
         return environment.mutinds[self.mutind_name].inds[self.ind_index].type(environment)
 
+    def check(self, environment, context=[]):
+        return self.type(environment, context), []
+
     def render(self, environment=None, context=[], debug=False) -> 'str':
         found = False
         ind_name = None
-        univ_inst_str = "@{%s}" % str(self.univ_inst)
+        univ_inst_str = str(self.univ_inst)
 
         try:
             if self.mutind_name in environment.mutinds:
@@ -532,7 +675,7 @@ class Ind(Term):
             pass
 
         if not debug and found:
-            return ind_name
+            return ind_name + univ_inst_str
         else:
             return '_%s_%d_' % (self.mutind_name, self.ind_index) + univ_inst_str
 

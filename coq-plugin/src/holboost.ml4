@@ -120,6 +120,18 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
                         Not_found -> Feedback.msg_info Pp.(str "feedback missing")
         end
     ]
+    | [ "Boom" "Print" "Env" ] -> [ Feedback.msg_info (Debug.pr_current_environ ()) ]
+    | [ "Boom" "Print" "Universes" ] -> [
+        let env = 
+            try
+                let _, env = Pfedit.get_current_goal_context () in
+                env
+            with
+                _ -> Global.env ()
+        in
+        let univs = Environ.universes env in
+        Feedback.msg_info (Debug.pr_ugraph univs)
+    ]
 END;;
 
 (*
