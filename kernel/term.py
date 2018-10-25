@@ -17,6 +17,13 @@ class Binding:
         self.value = value
         self.type = type
 
+    def __repr__(self):
+        return "%s%s%s" % (
+                "_" if self.name is None else self.name,
+                "" if self.type is None else " : " + str(self.type),
+                "" if self.value is None else " := " + str(self.value)
+                )
+
 
 class Term(abc.ABC):
 
@@ -225,10 +232,10 @@ class Cast(Term):
         return self.guaranteed_type
 
     def check(self, environment, context=[]):
+        print(self.render(environment, context))
         term_type, term_side_effect = self.body.check(environment, context)
         _, guaranteed_side_effect = self.guaranteed_type.check(environment, context)
 
-        print(self.render(environment, context))
 
         def is_subtype(l, r):
             """
@@ -440,7 +447,7 @@ class Rel(Term):
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         binding = self.get_binding(context)
-        if binding is None or debug:
+        if binding is None or binding.name is None or debug:
             return "_REL_%d_" % self.index
         else:
             return binding.name
@@ -501,21 +508,21 @@ class Apply(Term):
         return typ.rels_subst(self.args)
 
     def check(self, environment, context=[]):
-        print(self, context)
         typ, side_effects = self.func.check(environment, context)
 
         bindings = context.copy()
         for arg in self.args:
-            bindings.append(Binding(None, arg, None))
-
             while isinstance(typ, Const):
-                typ = typ.unfold(environment, context)
+                typ = typ.unfold(environment, bindings)
 
+            print("CHECKING", arg, "BINDING", bindings)
             if isinstance(typ, Prod):
                 """
                 if f : A -> B is applied to a, i.e. (f a), we need to make sure (a : A)
                 """
                 side_effects.update(Cast(arg, 0, typ.arg_type).side_effects(environment, bindings))
+
+                bindings.append(Binding(None, arg, None))
                 typ = typ.body
             else:
                 raise TypingUnclosedError("cannot apply %s to %s" % (func_type.render(environment, context), arg.render(environment, context)))
@@ -554,7 +561,7 @@ class ContextTerm(Term):
 class Prod(ContextTerm):
     def type(self, environment, context=[]) -> 'Term':
         # TODO this is not correct
-        return TYPE
+        return self.body.type(environment, context + [Binding(self.arg_name, None, self.arg_type)])
 
     def check(self, environment, context=[]):
         raise Exception("unimplemented")

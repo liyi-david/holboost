@@ -9,6 +9,7 @@ Hypothesis H: forall (A:Type) (lst: A * A), f nat A lst = 0.
 
 Hint Rewrite H : wtf.
 
+(*
 Theorem TH: forall (A1 A2:Type) (lst1: A1 * A1) (lst2: A2 * A2), f nat A1 lst1 = f nat A2 lst2.
 Proof.
   intros.
@@ -37,6 +38,8 @@ Proof.
 Defined.
 
 Boom Print TH.
+*)
+
 
 Goal forall (A1 A2:Type) (lst1: A1 * A1) (lst2: A2 * A2), f nat A1 lst1 = f nat A2 lst2.
 Proof.
@@ -54,4 +57,5 @@ Proof.
         (H A2 lst2))).
 *)
     boom autorewrite with wtf.
-    Boom Print Universes.
+    Boom Remote "rewrite_proof.args[1].args[2]".
+    Boom Remote "rewrite_proof.args[1].args[2].check(task)".
