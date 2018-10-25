@@ -116,7 +116,7 @@ class RewriteCommand(Command):
                 Ttuple, a, b, P, proof
                 )
 
-        top.namespace['matching_result'] = match_result
+        top.debug_namespace['rewrite_proof'] = partial_proof
 
         top.debug("rewrite", "Ttuple   : ", Ttuple.render(self.task))
         top.debug("rewrite", "a        : ", a.render(self.task))

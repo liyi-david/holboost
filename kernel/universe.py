@@ -5,6 +5,11 @@ from enum import Enum, unique
 from itertools import product
 import abc
 
+
+class UniverseInconsistencyError(TypeError):
+    pass
+
+
 class Level(metaclass=abc.ABCMeta):
     def __init__(self):
         pass
@@ -48,6 +53,9 @@ class LevelConstraint:
     def __str__(self):
         return "%s %s %s" % (str(self.l), self.opr.value, str(self.r))
 
+    def __repr__(self):
+        return str(self)
+
 
 class Universe:
     def __init__(self, exprs):
@@ -56,10 +64,24 @@ class Universe:
         """
         self.exprs = exprs
 
+    @classmethod
+    def from_level(cls, level, offset):
+        assert isinstance(level, Level)
+        return Universe(
+                { level : offset }
+                )
+
+    def singleton(self):
+        return len(self.exprs) == 1
+
     def __add__(self, n):
-        newexprs = {
-                lvl : self.exprs[lvl] + 1 for lvl in self.exprs
-                }
+        newexprs = {}
+        for level in self.exprs:
+            if level is NativeLevels.Prop():
+                newexprs[NativeLevels.Set()] = self.exprs[level] + n
+            else:
+                newexprs[level] = self.exprs[level] + n
+
         return Universe(newexprs)
 
     # the following overwritten functions are used to generate universe constraints (i.e. level constraints)
@@ -73,14 +95,26 @@ class Universe:
             in caes (offl - offr) is 0 or 1, we can generate the cooresponding formula
             """
             offset_diff = self.exprs[l] - univ.exprs[r]
-            if offset_diff == 0:
+            if l is not NativeLevels.Prop() and l is not NativeLevels.Set():
+                offset_diff += 1
+            if r is not NativeLevels.Prop() and r is not NativeLevels.Set():
+                offset_diff -= 1
+
+            if l == r:
+                # if the levels are exactly the same
+                if offset_diff <= 0:
+                    return []
+                else:
+                    raise UniverseInconsistencyError("cannot resolve %s <= %s" % (str(self), str(univ)))
+
+            elif offset_diff == 0:
                 constraints.append(LevelConstraint(l, "<=", r))
             elif offset_diff == 1:
                 constraints.append(LevelConstraint(l, "<", r))
             else:
                 raise Exception("cannot resolve %s <= %s" % (str(l), str(r)))
 
-        return constraints
+        return set(constraints)
 
     def __lt__(self, univ):
         constraints = []
@@ -97,9 +131,9 @@ class Universe:
             elif offset_diff == -1:
                 constraints.append(LevelConstraint(l, "<=", r))
             else:
-                raise Exception("cannot resolve %s < %s" % (str(l), str(r)))
+                raise Exception("cannot resolve %s < %s" % (str(self), str(univ)))
 
-        return constraints
+        return set(constraints)
 
     def __eq__(self, univ):
         raise Exception("unimplemented yet")
@@ -121,7 +155,10 @@ class Universe:
 
 class UniverseInstance:
     def __init__(self, levels):
-        self.levels = levels
+        if isinstance(levels, Level):
+            self.levels = [levels]
+        else:
+            self.levels = levels
 
     @staticmethod
     def from_json(json):
@@ -144,6 +181,63 @@ class UniverseInstance:
 different kind of levels
 """
 
+# native levels
+class NativeLevels:
+    """
+    this is native levels used in holboost
+    """
+
+    class Set(Level):
+        __instance = None
+
+        def __new__(cls):
+            if cls.__instance is None:
+                cls.__instance = object.__new__(cls)
+
+            return cls.__instance
+
+        def __le__(self, level):
+            return level is not NativeLevels.Prop()
+
+
+        def __str__(self):
+            return "Set"
+
+        def to_json(self):
+            return [ "Set" ]
+
+    class Prop(Level):
+        __instance = None
+
+        def __new__(cls):
+            if cls.__instance is None:
+                cls.__instance = object.__new__(cls)
+
+            return cls.__instance
+
+        def __le__(self, level):
+            return True
+
+        def __str__(self):
+            return "Prop"
+
+        def to_json(self): return [ "Prop" ]
+
+
+    class Variable(Level):
+        def __init__(self, id=None):
+            self.id = id
+
+        def __le__(self, level):
+            raise UniverseInconsistencyError
+
+        def __str__(self):
+            return str(self.id)
+
+        def to_json(self):
+            return [ self.id ]
+
+# coq levels
 class CoqLevel(Level):
     def __init__(self, dirpath: list=[], offset: int=0, isprop=False, isset=False, var=None):
         # a coq level can be either Prop, Set, Level or Var
@@ -158,11 +252,11 @@ class CoqLevel(Level):
     def from_json(json):
         if len(json) == 1:
             if json[0] == "Prop":
-                return CoqLevel(isprop=True)
+                return NativeLevels.Prop()
             elif json[0] == "Set":
-                return CoqLevel(isset=True)
+                return NativeLevels.Set()
             elif json[0].startswith("Var("):
-                return CoqLevel(var=int(json[0][4:-1]))
+                return NativeLevels.Variable(int(json[0][4:-1]))
         # the list at least includes one path element and an offset
         # we dont render error message bug debug information since this assertion shall not failed
         # in production environment

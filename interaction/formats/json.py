@@ -100,6 +100,8 @@ class JsonFormat(Format):
             return ConnectCommand()
         elif json_item['name'] == "check":
             return CheckCommand(json_item['id'], JsonFormat.import_term(json_item['term']))
+        elif json_item['name'] == "run":
+            return RunCommand(json_item['command'])
         else:
             raise Exception("unknown command %s" % json_item['name'])
 

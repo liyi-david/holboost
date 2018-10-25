@@ -9,3 +9,15 @@ consider we have a macro called `proved`, or in holboost called interpretation, 
         its type is nat, and its value is 1 (proof)
 
     goal is proved
+
+
+designs of extensible term systems (macors)
+--
+
+- Interpretation
+    
+    - CoqProvable
+    - CoqCompatible
+    - SMTProvable
+    - ...
+

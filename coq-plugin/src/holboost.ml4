@@ -132,6 +132,26 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
         let univs = Environ.universes env in
         Feedback.msg_info (Debug.pr_ugraph univs)
     ]
+    | [ "Boom" "Remote" string(cmd)] -> [
+        let run_command = `Assoc [
+            ("name", `String "run");
+            ("command", `String cmd);
+        ] in
+        Taskexport.get_nonproof_task_and_then ~cmd:run_command begin
+            fun s ->
+                let resp = Hbsync.(post_json s) in
+                let open Yojson.Basic.Util in
+                if (resp |> member "error" |> to_bool) then begin
+                    Feedback.msg_info Pp.(str "holboost failed because " ++ str (resp |> member "msg" |> to_string))
+                end else
+                    try
+                        match (resp |> member "feedback") with
+                        | `String msg -> Feedback.msg_info Pp.(str msg)
+                        | _ -> Feedback.msg_info Pp.(str "invalid feedback from holboost server")
+                    with
+                        Not_found -> Feedback.msg_info Pp.(str "feedback missing")
+        end
+    ]
 END;;
 
 (*

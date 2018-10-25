@@ -17,12 +17,15 @@ class Top:
 
     def __init__(self):
         self.namespace = load()
+        self.debug_namespace = {}
         self.supported_methods = self.namespace.keys()
         self.message_pool = []
+        self.debug_mode = False
 
         # initalization of the namespace
         self.namespace['list'] = (lambda: print(self.supported_methods))
         self.namespace['log'] = (lambda: print("\n".join(self.message_pool[-5:])))
+        self.namespace['load'] = (lambda f: self.load(f))
         self.namespace['query'] = (lambda s: self.query(s))
         self.namespace['cache'] = {}
         self.namespace['debug'] = self.activate_debug
@@ -33,6 +36,7 @@ class Top:
     def activate_debug(self, *modules):
         self.print("the following modules have been added to the debug list: %s" % str(modules))
         self.debug_modules = self.debug_modules.union(set(modules))
+        self.debug_mode = True
 
     def log_message(self, message):
         self.message_pool.append(message)
@@ -45,6 +49,9 @@ class Top:
         if module in self.debug_modules:
             print("\rDebug   MSG ", *args)
             print("Holboost >>> ", end="", flush=True)
+
+    def run(self, cmd):
+        exec_or_evar(cmd, self.namespace, self.debug_namespace)
 
     def query(self, string):
         if 'task' not in self.namespace:
@@ -68,13 +75,19 @@ class Top:
                     if ind.name.endswith(string):
                         self.print(ind.name, ": ", ind.render(task))
 
-    def run(self):
+    def load(self, filename):
+        with open(filename) as rcfile:
+            for line in rcfile:
+                if self.debug_mode:
+                    self.run(line)
+                else:
+                    self.run(line)
+
+    def toploop(self):
         # load rc file
         try:
-            with open(".holboostrc") as rcfile:
-                print("Loading configurations from .holboostrc ...")
-                for line in rcfile:
-                    exec_or_evar(line, self.namespace)
+            print("Loading configurations from .holboostrc ...")
+            self.load(".holboostrc")
         except FileNotFoundError:
             pass
 
@@ -82,6 +95,9 @@ class Top:
         while True:
             command = input("\rHolboost >>> ")
             try:
-                exec_or_evar(command, self.namespace)
+                if self.debug_mode:
+                    self.run(command)
+                else:
+                    self.run(command)
             except Exception as err:
                 traceback.print_exc()

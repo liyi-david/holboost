@@ -21,6 +21,9 @@ class Meta(Term):
     def type(self, environment, context=[]):
         raise PatternAbuse("type of patterns cannot be evaluated")
 
+    def check(self, environment, context=[]):
+        raise PatternAbuse("type of patterns cannot be evaluated")
+
     def render(self, environment=None, context=[], debug=False):
         return "?(%s: %s)" % ("_" if self.index is None else self.index, self.type.render(environment, context, debug))
 
@@ -44,6 +47,9 @@ class Alias(Term):
         self.sub_pattern = sub_pattern
 
     def type(self, environment, context=[]):
+        raise PatternAbuse("type of patterns cannot be evaluated")
+
+    def check(self, environment, context=[]):
         raise PatternAbuse("type of patterns cannot be evaluated")
 
     def render(self, environment=None, context=[], debug=False):

@@ -12,7 +12,7 @@ t = Top()
 # the tasks will be rendered in the top's global
 server = run_coq_server(top=t)
 try:
-    t.run()
+    t.toploop()
 except (KeyboardInterrupt, EOFError):
     print('toploop stopped.')
     server.shutdown()
