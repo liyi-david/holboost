@@ -212,7 +212,7 @@ class Sort(Term):
         return Sort(SortEnum.set)
 
     @staticmethod
-    def mkType(univ: int):
+    def mkType(univ: 'Universe'):
         return Sort(SortEnum.type, univ)
 
 
@@ -261,6 +261,7 @@ class Cast(Term):
                 typing_counter += 1
 
             print("subtyping %s and %s" % (l.render(environment, context), r.render(environment, context)))
+            # TODO define equality here?
             assert l.univ.singleton() and r.univ.singleton(), "cannot check subtyping relation between joint levels"
 
             # FIXME double check the correctness
@@ -560,11 +561,45 @@ class ContextTerm(Term):
 
 class Prod(ContextTerm):
     def type(self, environment, context=[]) -> 'Term':
-        # TODO this is not correct
-        return self.body.type(environment, context + [Binding(self.arg_name, None, self.arg_type)])
+        """
+        please refer to https://coq.inria.fr/distrib/current/refman/language/cic.html
+        for the typing rules
+        """
+        body_type = self.body.type(environment, context + [Binding(self.arg_name, None, self.arg_type)])
+        assert isinstance(body_type, Sort)
+        if body_type.sort is SortEnum.prop:
+            return body_type
+        else:
+            type_of_arg_type = self.arg_type.type(environment, context)
+            assert isinstance(type_of_arg_type, Sort)
+            if body_type.sort is SortEnum.set:
+                if type_of_arg_type is SortEnum.prop or type_of_arg_type is SortEnum.set:
+                    return body_type
+                else:
+                    return type_of_arg_type
+            else:
+                return Sort.mkType(
+                        Universe.union(body_type.univ, type_of_arg_type.univ)
+                        )
 
     def check(self, environment, context=[]):
-        raise Exception("unimplemented")
+        # we need to check everything for correct generation of side effect
+        body_type, body_sideff = self.body.check(environment, context + [Binding(self.arg_name, None, self.arg_type)])
+        type_of_arg_type, type_of_arg_sideff = self.arg_type.check(environment, context)
+
+        sideff = set.union(body_sideff, type_of_arg_sideff)
+        assert isinstance(body_type, Sort)
+        if body_type.sort is SortEnum.prop:
+            return body_type, sideff
+        else:
+            assert isinstance(type_of_arg_type, Sort)
+            if body_type.sort is SortEnum.set:
+                if type_of_arg_type is SortEnum.prop or type_of_arg_type is SortEnum.set:
+                    return body_type, sideff
+                else:
+                    return type_of_arg_type, sideff
+            else:
+                return Sort.mkType(Universe.union(body_type.univ, type_of_arg_type.univ)), sideff
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         if self.arg_name is None:

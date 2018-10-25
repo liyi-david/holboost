@@ -4,8 +4,10 @@ from proving.pattern.pattern import *
 from proving.pattern.match import *
 from proving.termopr.tuple import *
 
+from plugins import load_plugins
 from interaction.formats.json import JsonFormat
 
-test = Apply(Lambda('a', Sort.mkProp(), Rel(0)))
+# configure
+load_plugins(top)
 
 debug('rewrite')

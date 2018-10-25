@@ -51,7 +51,10 @@ class Top:
             print("Holboost >>> ", end="", flush=True)
 
     def run(self, cmd):
-        exec_or_evar(cmd, self.namespace, self.debug_namespace)
+        if self.debug_mode:
+            exec_or_evar(cmd, self.namespace, self.debug_namespace)
+        else:
+            exec_or_evar(cmd, self.namespace)
 
     def query(self, string):
         if 'task' not in self.namespace:
@@ -78,10 +81,7 @@ class Top:
     def load(self, filename):
         with open(filename) as rcfile:
             for line in rcfile:
-                if self.debug_mode:
-                    self.run(line)
-                else:
-                    self.run(line)
+                self.run(line)
 
     def toploop(self):
         # load rc file
@@ -95,9 +95,6 @@ class Top:
         while True:
             command = input("\rHolboost >>> ")
             try:
-                if self.debug_mode:
-                    self.run(command)
-                else:
-                    self.run(command)
+                self.run(command)
             except Exception as err:
                 traceback.print_exc()

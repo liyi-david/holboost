@@ -84,6 +84,24 @@ class Universe:
 
         return Universe(newexprs)
 
+    @classmethod
+    def union(cls, u1, u2):
+        if u1 is None and u2 is None:
+            raise TypeError
+        elif u1 is None:
+            return u2
+        elif u2 is None:
+            return u1
+
+        exprs = {}
+        for level, offset in list(u1.exprs.items()) + list(u2.exprs.items()):
+            if level not in exprs:
+                exprs[level] = offset
+            else:
+                exprs[level] = max(exprs[level], offset)
+
+        return Universe(exprs)
+
     # the following overwritten functions are used to generate universe constraints (i.e. level constraints)
     def __le__(self, univ):
         constraints = []

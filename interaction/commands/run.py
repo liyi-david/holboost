@@ -1,4 +1,5 @@
 from .command import Command
+from sys import stdout
 
 class RunCommand(Command):
     """
@@ -17,5 +18,5 @@ class RunCommand(Command):
             return "successfully finished."
         except Exception as err:
             from traceback import print_exc
-            print_exc(err)
+            print_exc()
             return "failed because %s" % str(err)
