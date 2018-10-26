@@ -271,7 +271,11 @@ class Cast(Term):
 
             return l.univ <= r.univ
 
-        return self.guaranteed_type, is_subtype(term_type, self.guaranteed_type)
+        return self.guaranteed_type, set.union(
+                is_subtype(term_type, self.guaranteed_type),
+                term_side_effect,
+                guaranteed_side_effect
+                )
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         kind_strs = [ "<:", "<<:", ":" ]
@@ -519,7 +523,7 @@ class Apply(Term):
             while isinstance(typ, Const):
                 typ = typ.unfold(environment, bindings)
 
-            print("CHECKING", arg, "BINDING", bindings)
+            # print("CHECKING", arg, "BINDING", bindings)
             if isinstance(typ, Prod):
                 """
                 if f : A -> B is applied to a, i.e. (f a), we need to make sure (a : A)

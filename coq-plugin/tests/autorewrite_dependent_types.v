@@ -57,5 +57,7 @@ Proof.
         (H A2 lst2))).
 *)
     boom autorewrite with wtf.
-    Boom Remote "rewrite_proof.args[1].args[2]".
-    Boom Remote "rewrite_proof.args[1].args[2].check(task)".
+    Boom Print Universes.
+    Boom Remote "rewrite_proof.check(task)".
+    auto.
+Qed.

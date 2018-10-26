@@ -105,51 +105,54 @@ class Universe:
     # the following overwritten functions are used to generate universe constraints (i.e. level constraints)
     def __le__(self, univ):
         constraints = []
+        assert univ.singleton(), "cannot do comparison like ... <= max(..., ..., ...)"
+
         for l, r in product(self.exprs, univ.exprs):
+            offl, offr = self.exprs[l], univ.exprs[r]
             """
             suppose the the left expr is (l, offl), right expr is (r, offr)
-            l + offl <= r + offr <->
-            l + (offl - offr) <= r
-            in caes (offl - offr) is 0 or 1, we can generate the cooresponding formula
+            l + offl <= r + offr
             """
-            offset_diff = self.exprs[l] - univ.exprs[r]
-            if l is not NativeLevels.Prop() and l is not NativeLevels.Set():
-                offset_diff += 1
-            if r is not NativeLevels.Prop() and r is not NativeLevels.Set():
-                offset_diff -= 1
 
-            if l == r:
-                # if the levels are exactly the same
-                if offset_diff <= 0:
-                    return []
+            if r is NativeLevels.Set() and offr == 1:
+                # FIXME this is a hack to handle template polymorphism in inductives
+                pass
+            elif l == r:
+                if offl > offr:
+                    raise UniverseInconsistencyError("%s, %s" % (self, univ))
                 else:
-                    raise UniverseInconsistencyError("cannot resolve %s <= %s" % (str(self), str(univ)))
-
-            elif offset_diff == 0:
-                constraints.append(LevelConstraint(l, "<=", r))
-            elif offset_diff == 1:
-                constraints.append(LevelConstraint(l, "<", r))
+                    pass
+            elif l in (NativeLevels.Set(), NativeLevels.Prop()):
+                if r in (NativeLevels.Set(), NativeLevels.Prop()):
+                    if offl > offr:
+                        raise UniverseInconsistencyError("%s, %s" % (self, univ))
+                    else:
+                        pass
+                else:
+                    # r is a level variable
+                    if offr - offl + 1 < 0:
+                        # e.g. Set + 1 + n <= Top.? + n ( + m )
+                        # offl = n + 1
+                        # offr = m + n
+                        # offr - offl = m - 1
+                        # m >= 0
+                        raise UniverseInconsistencyError("%s, %s" % (self, univ))
+            elif r in (NativeLevels.Set(), NativeLevels.Prop()):
+                raise Exception("cannot resolve %s <= %s" % (str(self), str(univ)))
             else:
-                raise Exception("cannot resolve %s <= %s" % (str(l), str(r)))
+                # both l and r are level variables
+                if offl == offr:
+                    constraints.append(LevelConstraint(l, "<=", r))
+                elif offl == offr + 1:
+                    constraints.append(LevelConstraint(l, "<", r))
+                else:
+                    raise UniverseInconsistencyError("%s, %s" % (self, univ))
+
 
         return set(constraints)
 
     def __lt__(self, univ):
-        constraints = []
-        for l, r in product(self.exprs, univ.exprs):
-            """
-            suppose the the left expr is (l, offl), right expr is (r, offr)
-            l + offl < r + offr <->
-            l + (offl - offr) < r
-            in caes (offl - offr) is 0 or -1, we can generate the cooresponding formula
-            """
-            offset_diff = self.exprs[l] - univ.exprs[r]
-            if offset_diff == 0:
-                constraints.append(LevelConstraint(l, "<", r))
-            elif offset_diff == -1:
-                constraints.append(LevelConstraint(l, "<=", r))
-            else:
-                raise Exception("cannot resolve %s < %s" % (str(self), str(univ)))
+        raise Exception("unimplemented")
 
         return set(constraints)
 
