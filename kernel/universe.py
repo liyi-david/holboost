@@ -50,8 +50,14 @@ class LevelConstraint:
         self.r = r
         self.opr = LevelConstraint.ExprType(opr)
 
+    def __eq__(self, lc):
+        return self.l == lc.l and self.opr == lc.opr and self.r == lc.r
+
     def __str__(self):
         return "%s %s %s" % (str(self.l), self.opr.value, str(self.r))
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __repr__(self):
         return str(self)
