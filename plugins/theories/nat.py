@@ -1,8 +1,12 @@
-from kernel.interpretation import Interpretation
+from kernel.macro import Macro
 from kernel.term import *
 
 
-class NatType(Interpretation):
+class NatType(Macro):
+
+    @classmethod
+    def name(cls):
+        return "nat_type"
 
     def type(self, environment, context=[]):
         return Sort.mkSet()
@@ -20,7 +24,11 @@ class NatType(Interpretation):
 nat = NatType()
 
 
-class Nat(Interpretation):
+class Nat(Macro):
+
+    @classmethod
+    def name(cls):
+        return "nat_term"
 
     def __init__(self, val):
         assert isinstance(val, int) and val >= 0, "non-natural number!"

@@ -1,4 +1,4 @@
-from kernel.interpretation import Provable
+from kernel.macro import Provable
 
 class SmtProvable(Provable):
 

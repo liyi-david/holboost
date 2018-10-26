@@ -1,11 +1,11 @@
 from os import listdir
 from os.path import isdir, join
+from kernel.macro import Macro
 
 from traceback import print_exc
 
-plugin_dir = "plugins"
 
-def load_plugins(top):
+def load_plugins(top, plugin_dir="plugins"):
     print("scanning plugins ... ", end="")
     loaded = []
 
@@ -21,6 +21,8 @@ def load_plugins(top):
                             continue
 
                         top.namespace[item] = getattr(mod, item)
+                        if isinstance(top.namespace[item], Macro):
+                            top.namespace[item].register()
 
                     loaded.append(plugin)
                 except Exception as err:

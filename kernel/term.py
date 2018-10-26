@@ -203,18 +203,28 @@ class Sort(Term):
         """ sort contains no sub-term and hence cannot be substituted """
         return self
 
-    @staticmethod
-    def mkProp():
-        return Sort(SortEnum.prop)
 
-    @staticmethod
-    def mkSet():
-        return Sort(SortEnum.set)
+    # singeleton instances
+    prop = None
+    set = None
 
-    @staticmethod
-    def mkType(univ: 'Universe'):
+    @classmethod
+    def mkProp(cls):
+        if cls.prop is None:
+            cls.prop = Sort(SortEnum.prop)
+
+        return cls.prop
+
+    @classmethod
+    def mkSet(cls):
+        if cls.set is None:
+            cls.set = Sort(SortEnum.set)
+
+        return cls.set
+
+    @classmethod
+    def mkType(cls, univ: 'Universe'):
         return Sort(SortEnum.type, univ)
-
 
 class Cast(Term):
 
@@ -232,7 +242,7 @@ class Cast(Term):
         return self.guaranteed_type
 
     def check(self, environment, context=[]):
-        print(self.render(environment, context))
+        # print(self.render(environment, context))
         term_type, term_side_effect = self.body.check(environment, context)
         _, guaranteed_side_effect = self.guaranteed_type.check(environment, context)
 
@@ -254,13 +264,13 @@ class Cast(Term):
 
             rawl, rawr = l, r
             typing_counter = 0
-            print("subtyping %s and %s" % (l.render(environment, context), r.render(environment, context)))
+            # print("subtyping %s and %s" % (l.render(environment, context), r.render(environment, context)))
 
             while not isinstance(l, Sort) or not isinstance(r, Sort) or l.sort != SortEnum.type or r.sort != SortEnum.type:
                 l, r = l.type(environment, context), r.type(environment, context)
                 typing_counter += 1
 
-            print("subtyping %s and %s" % (l.render(environment, context), r.render(environment, context)))
+            # print("subtyping %s and %s" % (l.render(environment, context), r.render(environment, context)))
             # FIXME define equality here?
             if l.univ.exprs == r.univ.exprs:
                 # the two universes are literally equal

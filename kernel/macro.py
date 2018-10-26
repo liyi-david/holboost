@@ -8,9 +8,17 @@ from .term import Term
 
 import abc
 
-class Interpretation(Term, metaclass=abc.ABCMeta):
+class Macro(Term, metaclass=abc.ABCMeta):
 
-    class InterpretationAbuse(Exception):
+    class MacroAbuse(Exception):
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def name(cls):
+        """
+        return the name of the interpretation
+        """
         pass
 
     def type(self, environment, context=[]) -> 'Term':
@@ -23,14 +31,30 @@ class Interpretation(Term, metaclass=abc.ABCMeta):
         return self.unfold() == t
 
     def subterms(self):
-        raise Interpretation.InterpretationAbuse
+        raise Macro.MacroAbuse
 
     def subterms_subst(self, subterms):
-        raise Interpretation.InterpretationAbuse
+        raise Macro.MacroAbuse
 
     @abc.abstractmethod
     def unfold(self) -> 'Term':
         pass
+
+
+    """
+    interpretation registeration mechanism
+
+    this allows plugins to register their interpretations
+    """
+
+    __registered_macros = {}
+
+    @classmethod
+    def register(cls):
+        if cls.name() not in cls.__registered_macros:
+            cls.__registered_macros[cls.name()] = cls
+        else:
+            raise Exception("interpretation %s already exist!" % cls.name())
 
 
 class Provable(Term, metaclass=abc.ABCMeta):
@@ -72,5 +96,5 @@ class Provable(Term, metaclass=abc.ABCMeta):
         raise Provable.ProvableTermAbuse
 
 
-class HolboostProvable(Provable, Interpretation):
+class HolboostProvable(Provable, Macro):
     pass
