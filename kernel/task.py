@@ -24,6 +24,10 @@ class Task(Environment):
                 len(self.variables)
                 ) + "[] |- %s" % ("None" if self.goal is None else self.goal.render(self))
 
+    @staticmethod
+    def get_current():
+        return Task.current if Task.current is not None else Task(None)
+
     def run(self, top):
         if self.command is not None:
             t_start = time()

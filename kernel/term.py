@@ -79,7 +79,7 @@ class Term(abc.ABC):
         pass
 
     def __str__(self) -> 'str':
-        return self.render(Task.current)
+        return self.render(Task.get_current())
 
     def __repr__(self):
         return str(self)
@@ -350,7 +350,7 @@ class Const(Term):
 
     def unfold(self, environment, context=[]):
         if self.name not in environment.constants:
-            raise TypingUnclosedError("constant %d not found in the given environment" % self.name)
+            raise TypingUnclosedError("constant %s not found in the given environment" % self.name)
         else:
             return environment.constants[self.name].body
 

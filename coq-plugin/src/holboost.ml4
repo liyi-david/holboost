@@ -77,12 +77,35 @@ END;;
 
 
 VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
-| [ "Boom" "Check" constr(c) ] -> [
+| [ "Boom" "TypeOf" constr(c) ] -> [
     let json_constr = Serialize.constrexpr2json c in
     let check_command = `Assoc [
         ("name", `String "check");
         ("term", json_constr);
         ("id", `Null)
+    ] in
+    Taskexport.get_nonproof_task_and_then ~cmd:check_command begin
+        fun s ->
+            let resp = Hbsync.(post_json s) in
+            let open Yojson.Basic.Util in
+            if (resp |> member "error" |> to_bool) then begin
+                Feedback.msg_info Pp.(str "holboost failed because " ++ str (resp |> member "msg" |> to_string))
+            end else
+                try
+                    match (resp |> member "feedback") with
+                    | `String msg -> Feedback.msg_info Pp.(str msg)
+                    | _ -> Feedback.msg_info Pp.(str "invalid feedback from holboost server")
+                with
+                    Not_found -> Feedback.msg_info Pp.(str "feedback missing")
+    end
+    ]
+| [ "Boom" "Check" constr(c) ] -> [
+    let json_constr = Serialize.constrexpr2json c in
+    let check_command = `Assoc [
+        ("name", `String "check");
+        ("term", json_constr);
+        ("id", `Null);
+        ("fullcheck", `Bool true)
     ] in
     Taskexport.get_nonproof_task_and_then ~cmd:check_command begin
         fun s ->

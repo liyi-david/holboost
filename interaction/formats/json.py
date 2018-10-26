@@ -99,7 +99,11 @@ class JsonFormat(Format):
         elif json_item['name'] == "connect":
             return ConnectCommand()
         elif json_item['name'] == "check":
-            return CheckCommand(json_item['id'], JsonFormat.import_term(json_item['term']))
+            if 'fullcheck' in json_item:
+                fullcheck = json_item['fullcheck']
+            else:
+                fullcheck = False
+            return CheckCommand(json_item['id'], JsonFormat.import_term(json_item['term']), fullcheck)
         elif json_item['name'] == "run":
             return RunCommand(json_item['command'])
         else:

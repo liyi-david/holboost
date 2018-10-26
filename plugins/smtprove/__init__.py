@@ -1,1 +1,1 @@
-from kernel.interpretation import Provable
+from .proofterm import SmtProvable

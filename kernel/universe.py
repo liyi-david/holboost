@@ -291,8 +291,14 @@ class CoqLevel(Level):
         else:
             return self.dirpath + [self.offset]
 
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, lvl):
+        return isinstance(lvl, CoqLevel) and str(self) == str(lvl)
+
     def __le__(self, lvl):
-        return True
+        return False
 
     def __str__(self):
         if self.isprop:

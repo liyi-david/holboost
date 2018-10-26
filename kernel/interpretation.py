@@ -56,6 +56,12 @@ class Provable(Term, metaclass=abc.ABCMeta):
     def get_proof_obligation(self) -> 'Provable.ProofObligation':
         pass
 
+    def type(self, environment, context=[]):
+        return self.proved_formula
+
+    def check(self, environment, context=[]):
+        raise Provable.ProvableTermAbuse
+
     def __eq__(self, t):
         raise Provable.ProvableTermAbuse
 
