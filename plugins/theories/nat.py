@@ -20,11 +20,14 @@ class NatType(Macro):
     def unfold(self):
         return Ind("Coq.Init.Datatypes.nat", 0)
 
+    def __call__(self, val):
+        """
+        invoke NatTerm and construct natural numbers, e.g. nat(0)
+        """
+        return NatTerm(val)
 
-nat = NatType()
 
-
-class Nat(Macro):
+class NatTerm(Macro):
 
     @classmethod
     def name(cls):
@@ -51,3 +54,5 @@ class Nat(Macro):
                     Construct("Coq.Init.Datatypes.nat", 0, 1), Nat(self.val - 1)
                     )
 
+
+nat = NatType()

@@ -1,1 +1,1 @@
-from .nat import *
+from .nat import nat

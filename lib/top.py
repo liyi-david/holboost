@@ -92,8 +92,25 @@ class Top:
             pass
 
         print("Holboost toploop started.")
+        multiline_command = ""
         while True:
-            command = input("\rHolboost >>> ")
+            if multiline_command != "":
+                # multi-line mode
+                command = input("\rHolboost ... ")
+                if command == "":
+                    # run them
+                    command = multiline_command
+                    multiline_command = ""
+                else:
+                    multiline_command += command + "\n"
+                    command = ""
+            else:
+                command = input("\rHolboost >>> ")
+                if len(command) > 0 and command.strip()[-1] == ':':
+                    multiline_command = command
+                    # do not execute it now
+                    command = ""
+
             try:
                 self.run(command)
             except Exception as err:
