@@ -1,3 +1,1 @@
-from kernel.interpretation import Proved
-
-a = 1
+from kernel.interpretation import Provable

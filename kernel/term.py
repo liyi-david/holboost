@@ -261,7 +261,10 @@ class Cast(Term):
                 typing_counter += 1
 
             print("subtyping %s and %s" % (l.render(environment, context), r.render(environment, context)))
-            # TODO define equality here?
+            # FIXME define equality here?
+            if l.univ.exprs == r.univ.exprs:
+                # the two universes are literally equal
+                return set()
             assert l.univ.singleton() and r.univ.singleton(), "cannot check subtyping relation between joint levels"
 
             # FIXME double check the correctness
