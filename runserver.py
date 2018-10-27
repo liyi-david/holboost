@@ -15,4 +15,5 @@ try:
     t.toploop()
 except (KeyboardInterrupt, EOFError):
     print('toploop stopped.')
+    t.store()
     server.shutdown()

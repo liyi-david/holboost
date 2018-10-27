@@ -40,6 +40,25 @@ class Macro(Term, metaclass=abc.ABCMeta):
     def unfold(self) -> 'Term':
         pass
 
+    @classmethod
+    def fold(cls, term):
+        """
+        fold a term as macro, will be invoked automatically when the condition returned by
+        auto_fold_on is satisfied.
+
+        neither or both the two functions should be overwritten.
+        """
+        raise cls.MacroAbuse("unimplemented fold function")
+
+    @classmethod
+    def auto_fold_on(cls):
+        """
+        returns:
+            - a lambda boolean function to check whether a term is going to be fold automatically
+            - None indicating this macro does not support auto-folding feature
+        """
+        return None
+
 
     """
     interpretation registeration mechanism
@@ -48,11 +67,14 @@ class Macro(Term, metaclass=abc.ABCMeta):
     """
 
     __registered_macros = {}
+    __autofold_filters = {}
 
     @classmethod
     def register(cls):
         if cls.name() not in cls.__registered_macros:
             cls.__registered_macros[cls.name()] = cls
+            if cls.auto_fold_on() is not None:
+                cls.__autofold_filters[cls] = cls.auto_fold_on()
         else:
             raise Exception("interpretation %s already exist!" % cls.name())
 

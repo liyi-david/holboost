@@ -543,7 +543,7 @@ class Apply(Term):
                 bindings.append(Binding(None, arg, None))
                 typ = typ.body
             else:
-                raise TypingUnclosedError("cannot apply %s to %s" % (func_type.render(environment, context), arg.render(environment, context)))
+                raise TypingUnclosedError("cannot apply %s to %s" % (typ.render(environment, context), arg.render(environment, context)))
 
         return typ.rels_subst(self.args), side_effects
 

@@ -83,7 +83,30 @@ class Top:
             for line in rcfile:
                 self.run(line)
 
+    __local_file = "cache.temp"
+
+    def store(self):
+        from pickle import dump
+        with open(self.__local_file, "wb") as f:
+            dump(self.namespace['cache'], f)
+
+    def restore(self):
+        from pickle import load
+        from os.path import exists
+
+        if not exists(self.__local_file):
+            return
+
+        with open(self.__local_file, "rb") as f:
+            try:
+                self.namespace['cache'] = load(f)
+            except:
+                self.print("loading cache failed.")
+
     def toploop(self):
+        # initialization from local database
+        self.restore()
+
         # load rc file
         try:
             print("Loading configurations from .holboostrc ...")
