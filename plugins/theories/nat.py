@@ -51,7 +51,7 @@ class NatTerm(Macro):
             return Construct("Coq.Init.Datatypes.nat", 0, 0)
         else:
             return Apply(
-                    Construct("Coq.Init.Datatypes.nat", 0, 1), Nat(self.val - 1)
+                    Construct("Coq.Init.Datatypes.nat", 0, 1), NatTerm(self.val - 1)
                     )
 
 

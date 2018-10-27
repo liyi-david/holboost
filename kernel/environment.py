@@ -24,3 +24,9 @@ class Environment:
         self.mutinds.update(env.mutinds)
 
         return self
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return "<holboost environment with %d constants, %d mut-inductives and %d variables>" % (len(self.constants), len(self.mutinds), len(self.variables))
