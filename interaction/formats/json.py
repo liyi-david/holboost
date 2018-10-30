@@ -129,11 +129,7 @@ class JsonFormat(Format):
                     )
 
         def import_ind(json_item):
-            return MutInductive.Inductive(
-                    json_item['ind_name'],
-                    JsonFormat.import_term(json_item['arity']),
-                    [ import_constructor(c) for c in json_item['constructors'] ]
-                    )
+            return MutInductive.Inductive.from_json(json_item)
 
         return MutInductive(
                 json_item['mutind_name'],

@@ -8,13 +8,13 @@ class NatType(Macro):
     def name(cls):
         return "nat_type"
 
-    def type(self, environment, context=[]):
+    def type(self, environment=None, context=[]):
         return Sort.mkSet()
 
-    def check(self, environment, context=[]):
+    def check(self, environment=None, context=[]):
         return Sort.mkSet(), set()
 
-    def render(self, environment, context=[], debug=False):
+    def render(self, environment=None, context=[], debug=False):
         return "nat"
 
     def unfold(self):
@@ -22,28 +22,28 @@ class NatType(Macro):
 
     def __call__(self, val):
         """
-        invoke NatTerm and construct natural numbers, e.g. nat(0)
+        invoke NatValue and construct natural numbers, e.g. nat(0)
         """
-        return NatTerm(val)
+        return NatValue(val)
 
 
-class NatTerm(Macro):
+class NatValue(Macro):
 
     @classmethod
     def name(cls):
-        return "nat_term"
+        return "nat_value"
 
     def __init__(self, val):
         assert isinstance(val, int) and val >= 0, "non-natural number!"
         self.val = val
 
-    def type(self, environment, context=[]):
+    def type(self, environment=None, context=[]):
         return nat
 
-    def check(self, environment, context=[]):
+    def check(self, environment=None, context=[]):
         return nat, set()
 
-    def render(self, environment, context=[], debug=False):
+    def render(self, environment=None, context=[], debug=False):
         return str(self.val)
 
     def unfold(self):
@@ -51,7 +51,7 @@ class NatTerm(Macro):
             return Construct("Coq.Init.Datatypes.nat", 0, 0)
         else:
             return Apply(
-                    Construct("Coq.Init.Datatypes.nat", 0, 1), NatTerm(self.val - 1)
+                    Construct("Coq.Init.Datatypes.nat", 0, 1), NatValue(self.val - 1)
                     )
 
 

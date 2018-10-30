@@ -21,21 +21,42 @@ let get_context (context: Context.Rel.t) : json =
     let open Context in
     let lst_context : json list = Rel.fold_outside begin fun rel lst_context ->
         (* FIXME *)
-        lst_context
+        (* we assume that all the context variable here is assumed instead of defined *)
+        let open Names in
+        let open Context.Rel.Declaration in
+        match rel with
+        | LocalAssum (name, typ) ->
+                let json_name = match name with
+                | Anonymous -> `Null
+                | Name id -> `String (Id.to_string id)
+                in
+                `Assoc [
+                    ("name", json_name);
+                    ("type", constr2json typ);
+                ] :: lst_context
+        (* | LocalDef _ -> lst_context *)
+        | _ -> raise (Hbcommon.SerializingFailure "cannot serialize the context of inductives.")
     end context ~init:[] in
-    `List lst_context
+    `List (List.rev lst_context)
 
 let get_ind_arity (arity: Declarations.inductive_arity) : json =
     let open Declarations in
     match arity with
     | RegularArity rarity -> 
-            constr2json rarity.mind_user_arity
+            `Assoc [
+                ("type", `String "regular");
+                ("arity", constr2json rarity.mind_user_arity);
+            ]
     | TemplateArity tarity ->
             (* a template arity is a technique to support template universe polymorphism,
              * e.g. Type_0 -> Type_1 -> Type, ...
              * but here we simply use Type -> Type -> ... to simplify all of them
+             * FIXME
              * *)
-            constr2json (mk_template_arity (List.length tarity.template_param_levels))
+            `Assoc [
+                ("type", `String "template");
+                ("arity", constr2json (mk_template_arity (List.length tarity.template_param_levels)))
+            ]
 
 let get_one_inductive_body (body: Declarations.one_inductive_body) : json =
     let open Declarations in

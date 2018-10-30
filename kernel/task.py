@@ -26,7 +26,7 @@ class Task(Environment):
 
     @staticmethod
     def get_current():
-        return Task.current if Task.current is not None else Task(None)
+        return Task.current
 
     def run(self, top):
         if self.command is not None:

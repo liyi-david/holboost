@@ -80,8 +80,7 @@ class Top:
 
     def load(self, filename):
         with open(filename) as rcfile:
-            for line in rcfile:
-                self.run(line)
+            self.run(rcfile.read())
 
     __local_file = "cache.temp"
 
@@ -130,7 +129,7 @@ class Top:
             else:
                 command = input("\rHolboost >>> ")
                 if len(command) > 0 and command.strip()[-1] == ':':
-                    multiline_command = command
+                    multiline_command = command + "\n"
                     # do not execute it now
                     command = ""
 

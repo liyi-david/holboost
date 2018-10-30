@@ -1,9 +1,9 @@
-from kernel.macro import Provable
+from kernel.macro import Proof
 
-class SmtProvable(Provable):
+class SmtProof(Proof):
 
     def __init__(self, proved_formula):
-        Provable.__init__(self)
+        Proof.__init__(self)
         self.proved_formula = proved_formula
 
     def get_proof_obligation(self):

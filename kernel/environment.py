@@ -1,4 +1,16 @@
 class Environment:
+
+    __default_environment = None
+
+    @classmethod
+    def set_default(cls, env):
+        assert isinstance(env, cls)
+        cls.__default_environment = env
+
+    @classmethod
+    def default(cls):
+        return cls.__default_environment
+
     def __init__(self, constants={}, mutinds={}, variables={}):
         self.constants = constants
         self.mutinds = mutinds

@@ -1,5 +1,6 @@
 from kernel.term import *
 from kernel.macro import *
+from kernel.environment import *
 from proving.pattern.pattern import *
 from proving.pattern.match import *
 from proving.termopr.tuple import *
@@ -9,5 +10,10 @@ from interaction.formats.json import JsonFormat
 
 # configure
 load_plugins(top)
+
+# set default environment
+if "coq" in top.namespace['cache']:
+    Environment.set_default(top.namespace['cache']['coq'])
+    # del cache['coq']
 
 debug('rewrite')
