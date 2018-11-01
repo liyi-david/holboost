@@ -49,8 +49,8 @@ class Environment:
         return self
 
     def declare_variable(self, ident, typ):
-        if ident in self.variables:
-            raise KeyError("variable %s already exists!" % ident)
+        if ident in self.__variables:
+            raise KeyError("variable %s already exists in the local environment!" % ident)
 
         from .declaration import Constant
         self.__variables[ident] = Constant(ident, typ)
@@ -61,6 +61,7 @@ class Environment:
 
         from .declaration import Constant
         self.__constants[ident] = Constant(ident, typ, body, is_builtin)
+
 
     # the three functions `add_......` are mainly used when directly copy something
     # from one environment to another. it DOES NOT check whether the identifier is
@@ -85,13 +86,40 @@ class Environment:
         self.__mutinds[mutind.name] = mutind
 
     def constants(self):
-        return self.__constants
+        result = self.__constants.copy()
+        if self.inherited_environment is not None:
+            result.update(self.inherited_environment.constants())
+
+        return result
 
     def variables(self):
-        return self.__variables
+        result = self.__variables.copy()
+        if self.inherited_environment is not None:
+            result.update(self.inherited_environment.variables())
+
+        return result
 
     def mutinds(self):
-        return self.__mutinds
+        result = self.__mutinds.copy()
+        if self.inherited_environment is not None:
+            result.update(self.inherited_environment.mutinds())
+
+        return result
+
+    def inds(self):
+        inds = {}
+        for mutind in self.mutinds().values():
+            inds.update({ ind.name: ind for ind in mutind.inds })
+
+        return inds
+
+    def constructors(self):
+        constructors = {}
+        for ind in self.inds().values():
+            constructors.update({ c.name: c for c in ind.constructors })
+
+        return constructors
+
 
     def constant(self, _filter):
         assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
@@ -100,15 +128,9 @@ class Environment:
             name = _filter
             _filter = lambda s: s == name
 
-        satisfied = list(map(
-            lambda name: self.__constants[name],
-            filter(_filter, self.__constants.keys())
+        return list(filter(
+            lambda item: _filter(item.name), self.constants().values()
             ))
-
-        if self.inherited_environment is not None:
-            satisfied += self.inherited_environment.constant(_filter)
-
-        return satisfied
 
     def variable(self, _filter):
         assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
@@ -117,15 +139,9 @@ class Environment:
             name = _filter
             _filter = lambda s: s == name
 
-        satisfied = list(map(
-            lambda name: self.__variables[name],
-            filter(_filter, self.__variables.keys())
+        return list(filter(
+            lambda item: _filter(item.name), self.variables().values()
             ))
-
-        if self.inherited_environment is not None:
-            satisfied += self.inherited_environment.variable(_filter)
-
-        return satisfied
 
     def mutind(self, _filter):
         assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
@@ -134,15 +150,45 @@ class Environment:
             name = _filter
             _filter = lambda s: s == name
 
-        satisfied = list(map(
-            lambda name: self.__mutinds[name],
-            filter(_filter, self.__mutinds.keys())
+        return list(filter(
+            lambda item: _filter(item.name), self.mutinds().values()
             ))
 
-        if self.inherited_environment is not None:
-            satisfied += self.inherited_environment.mutind(_filter)
+    def ind(self, _filter):
+        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
 
-        return satisfied
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
+
+        return list(filter(
+            lambda ind: _filter(ind.name),
+            self.inds().values()
+            ))
+
+
+    def constructor(self, _filter):
+        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
+
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
+
+        return list(filter(
+            lambda c: _filter(c.name),
+            self.constructors().values()
+            ))
+
+
+
+    def __getitem__(self, ident):
+        filt = lambda n: n.split(".")[-1] == ident
+        results = self.variable(filt) + self.constant(filt) + self.constructor(filt) + self.ind(filt) + self.mutind(filt)
+
+        if len(results) > 0:
+            return results[0]
+        else:
+            raise KeyError("identifier %s is not found." % ident)
 
     def __repr__(self):
         return "<holboost environment with %d constants, %d mut-inductives and %d variables%s>" % (

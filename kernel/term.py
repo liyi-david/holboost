@@ -406,11 +406,13 @@ class Const(Term):
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        const = environment.constant(self.name)
-        if const is None:
-            raise TypingUnclosedError("constant %s not found in the given environment" % self.name)
+        consts = environment.constant(self.name)
+        if len(consts) > 0:
+            const = consts[0]
         else:
-            return const.body
+            raise TypeError("constant %s not found in the given environment" % self.name)
+
+        return const.body
 
 
 class Case(Term):

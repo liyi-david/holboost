@@ -19,11 +19,13 @@ class CheckCommand(Command):
                 typ, sideff = self.term.check(self.task)
                 str_sideff = "\n".join(map(lambda uc: "\t" + str(uc), list(sideff)))
 
-                returnstr = "\n%s :\n\n\t%s\n\nuniverse constraints:\n\n%s\n" % (
+                returnstr = "\n%s :\n\n\t%s\n" % (
                         termstr,
                         typ.render(self.task),
-                        str_sideff
                         )
+
+                if len(sideff) > 0:
+                    returnstr += "\nuniverse constraints:\n\n%s\n" % str_sideff
             else:
                 typestr = self.term.type(self.task).render(self.task)
                 returnstr = "\n%s :\n\n\t%s" % (

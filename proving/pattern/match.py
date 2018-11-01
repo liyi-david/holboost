@@ -107,6 +107,7 @@ def match_at(pattern, term, environment=None, top=None):
             if pattern != term:
                 raise MatchFailure(pattern, term)
         elif all_are_same_instances((pattern, term), (Lambda, LetIn, Prod)):
+
             # Liyi: I removed the name checking since I think that is not important
             # and should not make the matching result different
             # if pattern.arg_name != term.arg_name:

@@ -1,5 +1,6 @@
 from kernel.term import *
 from kernel.macro import *
+from kernel.proofview import Proofview
 from kernel.environment import *
 from proving.pattern.pattern import *
 from proving.pattern.match import *
@@ -12,9 +13,10 @@ from interaction.formats.json import JsonFormat
 load_plugins(top)
 
 # set default environment
-if "coq" in top.namespace['cache']:
-    Environment.set_default(top.namespace['cache']['coq'])
-    env = Environment.default()
+if "coq" in cache:
+    env = Environment()
+    env.inherited_environment = cache['coq']
+    Environment.set_default(env)
     # del cache['coq']
 
 debug('rewrite')

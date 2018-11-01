@@ -71,7 +71,7 @@ class Top:
 
         # search constants
         result = []
-        filt = lambda n: n.endswith(name)
+        filt = lambda n: n.split(".")[-1] == name
         result += task.constant(filt)
         result += task.mutind(filt)
         result += task.variable(filt)
