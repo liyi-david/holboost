@@ -93,29 +93,56 @@ class Environment:
     def mutinds(self):
         return self.__mutinds
 
-    def constant(self, name):
-        if name in self.__constants:
-            return self.__constants[name]
-        elif self.inherited_environment is not None:
-            return self.inherited_environment.constant(name)
-        else:
-            raise KeyError("constant %s not found in the environment" % name)
+    def constant(self, _filter):
+        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
 
-    def variable(self, name):
-        if name in self.__variables:
-            return self.__variables[name]
-        elif self.inherited_environment is not None:
-            return self.inherited_environment.variable(name)
-        else:
-            raise KeyError("variable %s not found in the environment" % name)
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
 
-    def mutind(self, name):
-        if name in self.__mutinds:
-            return self.__mutinds[name]
-        elif self.inherited_environment is not None:
-            return self.inherited_environment.mutind(name)
-        else:
-            raise KeyError("mut-inductive %s not found in the environment" % name)
+        satisfied = list(map(
+            lambda name: self.__constants[name],
+            filter(_filter, self.__constants.keys())
+            ))
+
+        if self.inherited_environment is not None:
+            satisfied += self.inherited_environment.constant(_filter)
+
+        return satisfied
+
+    def variable(self, _filter):
+        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
+
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
+
+        satisfied = list(map(
+            lambda name: self.__variables[name],
+            filter(_filter, self.__variables.keys())
+            ))
+
+        if self.inherited_environment is not None:
+            satisfied += self.inherited_environment.variable(_filter)
+
+        return satisfied
+
+    def mutind(self, _filter):
+        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
+
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
+
+        satisfied = list(map(
+            lambda name: self.__mutinds[name],
+            filter(_filter, self.__mutinds.keys())
+            ))
+
+        if self.inherited_environment is not None:
+            satisfied += self.inherited_environment.mutind(_filter)
+
+        return satisfied
 
     def __repr__(self):
         return "<holboost environment with %d constants, %d mut-inductives and %d variables%s>" % (

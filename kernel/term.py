@@ -358,9 +358,11 @@ class Const(Term):
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        const = environment.constant(self.name)
-        if const is None:
-            raise TypingUnclosedError("constant %s not found in the given environment" % self.name)
+        consts = environment.constant(self.name)
+        if len(consts) > 0:
+            const = consts[0]
+        else:
+            raise TypeError("constant %s not found in the given environment" % self.name)
 
         return const.type(environment, context)
 
@@ -377,10 +379,9 @@ class Const(Term):
         univ_inst_str = str(self.univ_inst)
 
         try:
-            if environment.constant(self.name) is not None:
-                found = True
-        except KeyError:
-            # TODO add log to the top!
+            const = environment.constant(self.name)[0]
+            found = True
+        except IndexError:
             pass
 
         if not debug and found:
@@ -472,9 +473,11 @@ class Var(Const):
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        var = environment.variable(self.name)
-        if var is None:
-            raise TypingUnclosedError("find variable %s not found in the given environment" % self.name)
+        vars = environment.variable(self.name)
+        if len(vars) > 0:
+            var = vars[0]
+        else:
+            raise TypeError("variable %s not found in the given environment" % self.name)
 
         return var.type(environment, context)
 
@@ -783,9 +786,13 @@ class Construct(Term):
         if environment is None:
             environment = Environment.default()
             if environment is None:
-                raise Exception("cannot typing a term with no environment specified")
+                raise TypeError("cannot typing a term with no environment specified")
 
-        mutind = environment.mutind(self.mutind_name)
+        mutinds = environment.mutind(self.mutind_name)
+        if len(mutinds) > 0:
+            mutind = mutinds[0]
+        else:
+            raise TypeError("mut-inductive %s does not belong to the given environment" % self.mutind_name)
 
         return mutind.inds[self.ind_index].constructors[self.constructor_index].type(environment, context)
 
@@ -801,14 +808,12 @@ class Construct(Term):
         found = False
         construct_name = None
 
-        try:
-            mutind = environment.mutind(self.mutind_name)
-            if mutind is not None:
-                construct_name = mutind.inds[self.ind_index].constructors[self.constructor_index].name
-                found = True
-        except:
-            # TODO log
-            pass
+        mutinds = environment.mutind(self.mutind_name)
+        if len(mutinds) > 0:
+            mutind = mutinds[0]
+            construct_name = mutind.inds[self.ind_index].constructors[self.constructor_index].name
+            found = True
+
 
         univ_inst_str = str(self.univ_inst)
         if not debug and found:
@@ -847,7 +852,11 @@ class Ind(Term):
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        mutind = environment.mutind(self.mutind_name)
+        mutinds = environment.mutind(self.mutind_name)
+        if len(mutinds) > 0:
+            mutind = mutinds[0]
+        else:
+            raise TypeError("mut-inductive %s does not belong to the given environment" % self.mutind_name)
 
         return mutind.inds[self.ind_index].type(environment, context)
 
@@ -864,8 +873,8 @@ class Ind(Term):
         univ_inst_str = str(self.univ_inst)
 
         try:
-            mutind = environment.mutind(self.mutind_name)
-        except KeyError:
+            mutind = environment.mutind(self.mutind_name)[0]
+        except IndexError:
             mutind = None
 
         if not debug and mutind is not None:

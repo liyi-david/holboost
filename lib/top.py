@@ -1,4 +1,5 @@
 from proving import load
+from kernel.environment import Environment
 
 import traceback
 
@@ -56,27 +57,28 @@ class Top:
         else:
             exec_or_evar(cmd, self.namespace)
 
-    def query(self, string):
-        if 'task' not in self.namespace:
-            self.print('no task specified.')
-        else:
+    def query(self, name):
+        task = None
+
+        if Environment.default() is not None:
+            task = Environment.default()
+
+        if 'task' in self.namespace:
             task = self.namespace['task']
 
-            # search constants
-            for name in task.constants:
-                if name.endswith(string):
-                    self.print(name, ": ", task.constants[name].type.render(task))
+        if task is None:
+            self.print("neither default environment nor current task is provided.")
 
-            # search variables
-            for name in task.variables:
-                if name.endswith(string):
-                    self.print(name, ": ", task.variables[name].type.render(task))
+        # search constants
+        result = []
+        filt = lambda n: n.endswith(name)
+        result += task.constant(filt)
+        result += task.mutind(filt)
+        result += task.variable(filt)
 
-            # search mutinds
-            for mutind in task.mutinds.values():
-                for ind in mutind.inds:
-                    if ind.name.endswith(string):
-                        self.print(ind.name, ": ", ind.render(task))
+        for item in result:
+            self.print(item)
+
 
     def load(self, filename):
         with open(filename) as rcfile:

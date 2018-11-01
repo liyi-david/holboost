@@ -13,11 +13,14 @@ class Constant:
     def type(self, environment=None, context=[]):
         return self.typ
 
-    def __str__(self):
+    def render(self, task):
         if self.body is None:
-            return "%s: %s" % (self.name, self.type)
+            return "Declaration %s\n\n\t: %s\n" % (self.name, self.type(task))
         else:
-            return "%s: %s := %s" % (self.name, self.type, self.body)
+            return "Definition %s\n\n\t:  %s\n\t:= %s\n" % (self.name, self.type(task), self.body)
+
+    def __str__(self):
+        return self.render(None)
 
 
 class MutInductive:
