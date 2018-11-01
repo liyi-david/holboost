@@ -20,11 +20,24 @@ let pr_ugraph (graph:UGraph.t) : Pp.std_ppcmds =
             ((String.get line 0) != '<') && (Hbcommon.str_contains line "Top")
     end raw_lines in
     let open Pp in
-    str "universes information: \n" ++ (
+    str "universes information: \n\n" ++ (
         List.fold_left begin fun ppcmd line ->
             ppcmd ++ (str line) ++ (str "\n")
         end (str "") top_lines
     )
+
+let pr_ustate (ustate: UState.t) : Pp.std_ppcmds =
+    let open Pp in
+    let constraints = UState.constraints ustate in
+    str "universes information in evar_map:\n\n" ++ 
+    Univ.Constraint.fold begin fun uc cmd ->
+        let l, opr, r = uc in
+        str (Univ.Level.to_string l) ++
+        Univ.pr_constraint_type opr ++
+        str (Univ.Level.to_string r) ++
+        str "\n" ++
+        cmd
+    end constraints (str "")
 
 let pr_rels (rels: Context.Rel.Declaration.t list) : Pp.std_ppcmds =
     let open Pp in

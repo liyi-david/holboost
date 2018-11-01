@@ -48,6 +48,10 @@ class Term(abc.ABC):
         from interaction.formats.json import JsonFormat
         return JsonFormat.import_term(json_item)
 
+    def to_json(self):
+        from interaction.formats.json import JsonFormat
+        return JsonFormat.export_term(self)
+
     @abc.abstractmethod
     def type(self, environment=None, context=[]) -> 'Term':
         pass
@@ -354,18 +358,14 @@ class Const(Term):
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        return environment.constants[self.name].type
-
-    def check(self, environment=None, context=[]):
-        if environment is None:
-            environment = Environment.default()
-            if environment is None:
-                raise Exception("cannot typing a term with no environment specified")
-
-        if self.name not in environment.constants:
+        const = environment.constant(self.name)
+        if const is None:
             raise TypingUnclosedError("constant %s not found in the given environment" % self.name)
 
-        return environment.constants[self.name].type, set()
+        return const.type(environment, context)
+
+    def check(self, environment=None, context=[]):
+        return self.type(environment, context), set()
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
         if environment is None:
@@ -377,7 +377,7 @@ class Const(Term):
         univ_inst_str = str(self.univ_inst)
 
         try:
-            if self.name in environment.constants:
+            if environment.constant(self.name) is not None:
                 found = True
         except KeyError:
             # TODO add log to the top!
@@ -399,11 +399,17 @@ class Const(Term):
     def subterms_subst(self, subterms):
         return self
 
-    def unfold(self, environment, context=[]):
-        if self.name not in environment.constants:
+    def unfold(self, environment=None, context=[]):
+        if environment is None:
+            environment = Environment.default()
+            if environment is None:
+                raise Exception("cannot typing a term with no environment specified")
+
+        const = environment.constant(self.name)
+        if const is None:
             raise TypingUnclosedError("constant %s not found in the given environment" % self.name)
         else:
-            return environment.constants[self.name].body
+            return const.body
 
 
 class Case(Term):
@@ -466,17 +472,13 @@ class Var(Const):
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        if self.name not in environment.variables:
+        var = environment.variable(self.name)
+        if var is None:
             raise TypingUnclosedError("find variable %s not found in the given environment" % self.name)
 
-        return environment.variables[self.name].type
+        return var.type(environment, context)
 
     def check(self, environment=None, context=[]):
-        if environment is None:
-            environment = Environment.default()
-            if environment is None:
-                raise Exception("cannot typing a term with no environment specified")
-
         return self.type(environment, context), set()
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
@@ -783,7 +785,9 @@ class Construct(Term):
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        return environment.mutinds[self.mutind_name].inds[self.ind_index].constructors[self.constructor_index].type(environment, context)
+        mutind = environment.mutind(self.mutind_name)
+
+        return mutind.inds[self.ind_index].constructors[self.constructor_index].type(environment, context)
 
     def check(self, environment=None, context=[]):
         return self.type(environment, context), set()
@@ -798,8 +802,9 @@ class Construct(Term):
         construct_name = None
 
         try:
-            if self.mutind_name in environment.mutinds:
-                construct_name = environment.mutinds[self.mutind_name].inds[self.ind_index].constructors[self.constructor_index].name
+            mutind = environment.mutind(self.mutind_name)
+            if mutind is not None:
+                construct_name = mutind.inds[self.ind_index].constructors[self.constructor_index].name
                 found = True
         except:
             # TODO log
@@ -842,7 +847,9 @@ class Ind(Term):
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        return environment.mutinds[self.mutind_name].inds[self.ind_index].type(environment)
+        mutind = environment.mutind(self.mutind_name)
+
+        return mutind.inds[self.ind_index].type(environment, context)
 
     def check(self, environment=None, context=[]):
         return self.type(environment, context), set()
@@ -853,20 +860,16 @@ class Ind(Term):
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        found = False
         ind_name = None
         univ_inst_str = str(self.univ_inst)
 
         try:
-            if self.mutind_name in environment.mutinds:
-                ind_name = environment.mutinds[self.mutind_name].inds[self.ind_index].name
-                found = True
-        except:
-            # TODO log
-            pass
+            mutind = environment.mutind(self.mutind_name)
+        except KeyError:
+            mutind = None
 
-        if not debug and found:
-            return ind_name + univ_inst_str
+        if not debug and mutind is not None:
+            return mutind.inds[self.ind_index].name + univ_inst_str
         else:
             return '_%s_%d_' % (self.mutind_name, self.ind_index) + univ_inst_str
 

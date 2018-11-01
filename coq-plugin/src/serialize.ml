@@ -138,10 +138,16 @@ let constrexpr2json (c: Constrexpr.constr_expr) : json =
         if Proof_global.there_are_pending_proofs () then
             Pfedit.get_current_goal_context () 
         else
-            Evd.empty, Global.env ()
+            let env = Global.env () in
+            (*
+             * I copied the `Evd.from_env` part from Pfedit.get_current_context
+             * still I don't know why they need a evar_map even when the corresponding
+             * environment is already given ...
+             *)
+            Evd.from_env env, env
     end in
-    let (t, _) = (Constrintern.interp_constr env sigma c) in
-    constr2json t
+    let (_, t) = (Constrintern.interp_open_constr env sigma c) in
+    constr2json (EConstr.Unsafe.to_constr t)
 
 let rec json2econstr (ext: json) : EConstr.t =
     let open Yojson.Basic.Util in

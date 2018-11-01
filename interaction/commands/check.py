@@ -17,11 +17,12 @@ class CheckCommand(Command):
             termstr = self.term.render(self.task)
             if self.fullcheck:
                 typ, sideff = self.term.check(self.task)
+                str_sideff = "\n".join(map(lambda uc: "\t" + str(uc), list(sideff)))
 
-                returnstr = "\n%s :\n\n\t%s\n\nuniverse constraints:\n\n\t%s" % (
+                returnstr = "\n%s :\n\n\t%s\n\nuniverse constraints:\n\n%s\n" % (
                         termstr,
                         typ.render(self.task),
-                        str(sideff)
+                        str_sideff
                         )
             else:
                 typestr = self.term.type(self.task).render(self.task)
@@ -36,19 +37,19 @@ class CheckCommand(Command):
             dotid = "." + self.id
             id = self.id
 
-            for key in self.task.constants:
+            for key in self.task.constants():
                 if key.endswith(dotid):
-                    returnstr = str(self.task.constants[key].body)
+                    returnstr = str(self.task.constant(key).body)
                     break
 
-            for key in self.task.mutinds:
+            for key in self.task.mutinds():
                 if key.endswith(dotid):
-                    returnstr = str(self.task.mutinds[key])
+                    returnstr = str(self.task.mutind(key))
                     break
 
-            for key in self.task.variables:
+            for key in self.task.variables():
                 if key == self.id:
-                    returnstr = str(self.task.variables[key].type)
+                    returnstr = str(self.task.variable(key).type(self.task))
                     break
 
             top.print(returnstr)

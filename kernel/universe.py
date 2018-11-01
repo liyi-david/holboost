@@ -62,6 +62,13 @@ class LevelConstraint:
     def __repr__(self):
         return str(self)
 
+    def to_json(self):
+        return {
+                "left": self.l.to_json(),
+                "opr": self.opr.value,
+                "right": self.r.to_json()
+                }
+
 
 class Universe:
     def __init__(self, exprs):

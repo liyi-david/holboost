@@ -29,11 +29,11 @@ def CoqTaskHandlerFactory(top : 'Top'):
                     task = JsonFormat.import_task(parsed_data['content'])
                     task.client = parsed_data['client']
 
-                    top.print("task received with %d constants, %d variables and %d mut-inductives." % (len(task.constants), len(task.variables), len(task.mutinds)))
+                    top.print(task)
 
                     # merge buffered builtin declarations with the task
                     if task.client in top.namespace['cache']:
-                        task += top.namespace['cache'][task.client]
+                        task.inherited_environment = top.namespace['cache'][task.client]
 
                     top.namespace['task'] = task
 
@@ -41,7 +41,7 @@ def CoqTaskHandlerFactory(top : 'Top'):
 
                     if parsed_data['client'] not in top.namespace['cache']:
                         builtins = task.get_builtins()
-                        if len(builtins.constants) + len(builtins.mutinds) > 0:
+                        if len(builtins.constants()) + len(builtins.mutinds()) > 0:
                             top.namespace['cache'][parsed_data['client']] = builtins
 
 
@@ -50,7 +50,7 @@ def CoqTaskHandlerFactory(top : 'Top'):
                             "finished" : True,
                             "msg"      : "",
                             # FIXME in certain cases it may not return a term?
-                            "feedback" : JsonFormat.export_command_result(result),
+                            "feedback" : result,
                             "builtin_cached": parsed_data['client'] in top.namespace['cache']
                             }
 

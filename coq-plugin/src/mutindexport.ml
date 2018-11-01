@@ -3,24 +3,22 @@ open Yojson.Basic
 
 exception Unimplemented of string
 
-let mk_template_arity (nparams: int) : Constr.t =
-    (* from 2 to Type -> Type -> Type *)
-    let rec iterate (nparams: int) : EConstr.t =
-        let open EConstr in
-        let open Sorts in
-        if (nparams == 0) then begin
-            mkSort type1
-        end else begin
-            mkArrow (mkSort Sorts.type1) (iterate (nparams - 1))
-        end
-    in
+let mk_template_arity (param_levels: Univ.universe_level option list) : Constr.t =
+    (* FIXME *)
+    List.fold_right begin fun param_level_opt arity ->
+        let param_level = match param_level_opt with
+        | Some pl -> pl
+        (* FIXME *)
+        | None -> Univ.Level.set
+        in
+        let level_type = Constr.mkType (Univ.Universe.make param_level) in
+        (Constr.mkProd (Names.Name.Anonymous, level_type, arity))
+    end param_levels (Constr.mkType Univ.type1_univ)
 
-    EConstr.Unsafe.to_constr (iterate nparams)
 
 let get_context (context: Context.Rel.t) : json = 
     let open Context in
     let lst_context : json list = Rel.fold_outside begin fun rel lst_context ->
-        (* FIXME *)
         (* we assume that all the context variable here is assumed instead of defined *)
         let open Names in
         let open Context.Rel.Declaration in
@@ -55,7 +53,7 @@ let get_ind_arity (arity: Declarations.inductive_arity) : json =
              * *)
             `Assoc [
                 ("type", `String "template");
-                ("arity", constr2json (mk_template_arity (List.length tarity.template_param_levels)))
+                ("arity", constr2json (mk_template_arity tarity.template_param_levels))
             ]
 
 let get_one_inductive_body (body: Declarations.one_inductive_body) : json =
@@ -92,6 +90,7 @@ let get_mutinds env : json =
     let global = pre_env.env_globals in
     let json_list = Names.Mindmap_env.fold begin fun key mutind json_list ->
         let mutind_name = Names.MutInd.to_string key in
+        (*Feedback.msg_info (Pp.str mutind_name);*)
         Declbuf.set mutind_name (Declbuf.MutindDecl key);
         if (Hbsync.is_builtin mutind_name) && !Hbsync.builtin_cached then json_list else begin
             try

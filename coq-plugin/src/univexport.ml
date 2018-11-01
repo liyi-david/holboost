@@ -10,8 +10,8 @@ let pr_univ (univ:Univ.universe) : string =
     end levels ""
 
 let level_export (level:Univ.Level.t) : json =
-        let level_segments = String.split_on_char '.' (Univ.Level.to_string level) in
-        `List List.(map begin fun s -> `String s end level_segments)
+    let level_segments = String.split_on_char '.' (Univ.Level.to_string level) in
+    `List List.(map begin fun s -> `String s end level_segments)
 
 let level_import (json_level: json) : Univ.Level.t =
     match json_level with
@@ -26,7 +26,7 @@ let level_import (json_level: json) : Univ.Level.t =
         if offset == -1 then
             raise (DeserializingFailure ("level offset missing", json_level))
         else
-            Univ.Level.make (Names.DirPath.make (List.map (Names.Id.of_string) module_list)) offset
+            Univ.Level.make (Names.DirPath.make (List.rev (List.map (Names.Id.of_string) module_list))) offset
     | _ -> raise (DeserializingFailure ("invalid level", json_level))
 
 let universe_export (univ:Univ.universe option) : json =
@@ -79,3 +79,19 @@ let universe_inst_import (json_inst: json) : Univ.Instance.t =
     | `List levels ->
             Univ.Instance.of_array (Array.of_list (List.map level_import levels))
     | _ -> raise (DeserializingFailure ("invalid universe instance", json_inst))
+
+let univ_constraint_import (json_lc: json) : Univ.univ_constraint =
+    let open Yojson.Basic.Util in
+    let left = level_import (json_lc |> member "left") in
+    let right = level_import (json_lc |> member "right") in
+    let opr = match (json_lc |> member "opr" |> to_string) with
+    | "<=" -> Univ.Le
+    | "<"  -> Univ.Lt
+    | _opr -> raise (Hbcommon.SerializingFailure Printf.(sprintf "unsupported level constraint operator %s" _opr))
+    in
+    (left, opr, right)
+
+let univ_constraints_import (json_lc: json) : Univ.constraints =
+    let open Yojson.Basic.Util in
+    let ucs = (List.map univ_constraint_import (json_lc |> to_list)) in
+    Univ.Constraint.of_list ucs

@@ -4,11 +4,14 @@ from kernel.universe import Universe, NativeLevels
 
 
 class Constant:
-    def __init__(self, name: 'str', type: 'Term', body=None, is_builtin=False):
+    def __init__(self, name: 'str', typ: 'Term', body=None, is_builtin=False):
         self.name = name
-        self.type = type
+        self.typ = typ
         self.body = body
         self.is_builtin=is_builtin
+
+    def type(self, environment=None, context=[]):
+        return self.typ
 
     def __str__(self):
         if self.body is None:
@@ -26,6 +29,12 @@ class MutInductive:
             self.typ = typ
             self.ind = None
 
+        def __str__(self):
+            return repr(self)
+
+        def __repr__(self):
+            return "%s : %s" % (self.name, self.type())
+
         @classmethod
         def from_json(cls, json_item):
             return cls(
@@ -41,10 +50,21 @@ class MutInductive:
             self.name = name
             self.context = context
             self.arity = arity
+            self.raw_arity = None
             self.mutind = None
             self.constructors = constructors
             for c in self.constructors:
                 c.ind = self
+
+        def __repr__(self):
+            return "<inductive %s : %s>" % (self.name, self.type())
+
+        def __str__(self):
+            return "%s :\n" % self.name + \
+                    "\tCONTEXT: %s\n" % (self.context) + \
+                    "\tARITY  : %s\n" % self.arity + \
+                    "---\n" + \
+                    "\n".join(map(lambda c: "\t| " + str(c), self.constructors))
 
         @classmethod
         def from_json(cls, json_item):
@@ -53,32 +73,33 @@ class MutInductive:
             # FIXME that is weird!
             if json_item['arity']['type'] == "template":
                 arity = Term.from_json(json_item['arity']['arity'])
-                for binding in context:
-                    if isinstance(binding.type, Sort) and binding.type.sort == SortEnum.type:
-                        arity = arity.body
             else:
                 arity = Term.from_json(json_item['arity']['arity'])
 
-            return cls(
+            ind = cls(
                     json_item['ind_name'],
                     context,
                     arity,
                     list(map(MutInductive.Constructor.from_json, json_item['constructors']))
                     )
 
+            ind.raw_arity = Term.from_json(json_item['arity']['arity'])
+            return ind
+
         def as_term(self):
             return Ind(self.mutind.name, self.mutind.inds.index(self))
 
         def type(self, environment=None, context=[]):
             typ = self.arity
-            for binding in reversed(self.context):
-                if isinstance(binding.type, Sort) and binding.type.sort == SortEnum.type:
-                    # template polymorphism
-                    binding_type = Sort.mkType(Universe.from_level(NativeLevels.Set(), 1))
-                else:
-                    binding_type = binding.type
 
-                typ = Prod(None, binding_type, typ)
+            # for binding in reversed(self.context):
+                # if isinstance(binding.type, Sort) and binding.type.sort == SortEnum.type:
+                    # # template polymorphism
+                    # binding_type = Sort.mkType(Universe.from_level(NativeLevels.Set(), 1))
+                # else:
+                    # binding_type = binding.type
+
+                # typ = Prod(None, binding_type, typ)
 
             return typ
 
@@ -94,5 +115,17 @@ class MutInductive:
         self.inds = inds
         for i in self.inds:
             i.mutind = self
+
         self.is_builtin=is_builtin
 
+    def __str__(self):
+        s = "Mut-Inductive %s:\n\n" % self.name
+        for i in self.inds:
+            s += "[%d] " % self.inds.index(i)
+            s += str(i)
+            s += "\n"
+
+        return s
+
+    def __repr__(self):
+        return "<mut-inductive %s with %d inductives>" % (self.name, len(self.inds))

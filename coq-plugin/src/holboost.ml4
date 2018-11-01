@@ -47,12 +47,16 @@ TACTIC EXTEND boom
                         Tacticals.New.tclIDTAC
                     end
                     | _ -> begin
-                        let ec = Serialize.(json2econstr (resp |> member "feedback")) in
+                        let ec = Serialize.(json2econstr (resp |> member "feedback" |> member "proof")) in
+                        let ucs = Univexport.univ_constraints_import (resp |> member "feedback" |> member "sideff") in
                         let sigma, env = Pfedit.get_current_context () in
-                        let _, typ = Typing.type_of env sigma ec in
+                        let sigma_new = Evd.add_constraints sigma ucs in
+                        let sigma_new = Evd.fix_undefined_variables sigma_new in
                         Debug.debug "autorewrite" Printer.(pr_econstr ec);
-                        Debug.debug "autorewrite" Printer.(pr_econstr typ);
-                        Tactics.apply ec
+                        let open Tactics in
+                        Proofview.tclTHEN
+                            (Proofview.Unsafe.tclEVARSADVANCE sigma_new)
+                            (Tactics.apply ec)
                     end
                 with
                     Not_found ->
@@ -145,15 +149,21 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
     ]
     | [ "Boom" "Print" "Env" ] -> [ Feedback.msg_info (Debug.pr_current_environ ()) ]
     | [ "Boom" "Print" "Universes" ] -> [
-        let env = 
+        let sigma_opt, env = 
             try
-                let _, env = Pfedit.get_current_goal_context () in
-                env
+                let sigma, env = Pfedit.get_current_goal_context () in
+                Some sigma, env
             with
-                _ -> Global.env ()
+                _ -> None, Global.env ()
         in
         let univs = Environ.universes env in
-        Feedback.msg_info (Debug.pr_ugraph univs)
+        Feedback.msg_info (Debug.pr_ugraph univs);
+        match sigma_opt with
+        | Some sigma ->
+            let ustate = Evd.evar_universe_context sigma in
+            Feedback.msg_info (Debug.pr_ustate ustate)
+        | None -> ()
+
     ]
     | [ "Boom" "Remote" string(cmd)] -> [
         let run_command = `Assoc [

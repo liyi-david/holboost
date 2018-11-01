@@ -127,4 +127,12 @@ class RewriteCommand(Command):
         top.debug("rewrite", "proof    : ", partial_proof.render(self.task))
         top.debug("rewrite", "prf type : ", partial_proof.type(self.task).render(self.task))
 
-        return TermResult(partial_proof)
+        _, sideff = partial_proof.check(self.task)
+
+        result = {
+                "proof": partial_proof.to_json(),
+                "sideff": list(map(lambda uc: uc.to_json(), sideff))
+                }
+
+        top.debug("rewrite", result["sideff"])
+        return result
