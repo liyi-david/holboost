@@ -36,27 +36,12 @@ class CheckCommand(Command):
             top.print(returnstr)
         else:
             returnstr = "%s not found!" % self.id
-            dotid = "." + self.id
-            id = self.id
 
-            for key in self.task.constants():
-                if key.endswith(dotid):
-                    returnstr = str(self.task.constant(key).body)
-                    break
-
-            for key in self.task.mutinds():
-                if key.endswith(dotid):
-                    returnstr = str(self.task.mutind(key))
-                    break
-
-            for key in self.task.variables():
-                if key == self.id:
-                    returnstr = str(self.task.variable(key).type(self.task))
-                    break
+            try:
+                returnstr = str(self.task[self.id])
+            except KeyError:
+                pass
 
             top.print(returnstr)
-            returnstr = "%s :=\n\t%s" % (
-                    id, returnstr
-                    )
 
         return returnstr

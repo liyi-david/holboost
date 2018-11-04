@@ -11,7 +11,6 @@ from lib.common import all_are_same_instances, one_of_them_is
 class TypingUnclosedError(Exception):
     pass
 
-
 class Binding:
     def __init__(self, name, value, type):
         self.name = name
@@ -32,6 +31,7 @@ class Binding:
                 "" if self.type is None else " : " + str(self.type),
                 "" if self.value is None else " := " + str(self.value)
                 )
+
 
 
 class Term(abc.ABC):

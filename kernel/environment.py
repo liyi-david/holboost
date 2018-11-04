@@ -1,4 +1,3 @@
-
 class Environment:
 
     __default_environment = None
@@ -209,3 +208,13 @@ class Environment:
             rel += "\n  |- " + str(self.inherited_environment)
 
         return rel
+
+
+class BindingEnvironment:
+
+    def __init__(self, binding, env):
+        self.binding = binding
+        self.inherited_environment = env
+
+    def __getattr__(self, ident):
+        pass

@@ -134,5 +134,4 @@ class RewriteCommand(Command):
                 "sideff": list(map(lambda uc: uc.to_json(), sideff))
                 }
 
-        top.debug("rewrite", result["sideff"])
         return result

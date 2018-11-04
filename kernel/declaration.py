@@ -1,4 +1,4 @@
-from kernel.term import Construct, Ind, Binding, Term, Prod, Sort, SortEnum
+from kernel.term import Construct, Ind, Binding, Term, Prod, Sort, SortEnum, Var
 from kernel.universe import Universe, NativeLevels
 from kernel.universe import Universe, NativeLevels
 
@@ -9,9 +9,16 @@ class Constant:
         self.typ = typ
         self.body = body
         self.is_builtin=is_builtin
+        self.is_variable=False
 
     def type(self, environment=None, context=[]):
         return self.typ
+
+    def term(self):
+        if self.is_variable:
+            return Var(self.name)
+        else:
+            return Const(self.name)
 
     def render(self, task):
         if self.body is None:
@@ -31,6 +38,13 @@ class MutInductive:
             # the reason we use typ instead of type here is a consideration for dependent types
             self.typ = typ
             self.ind = None
+
+        def term(self):
+            return Construct(
+                    self.ind.mutind.name,
+                    self.ind.mutind.inds.index(self.ind),
+                    self.ind.constructors.index(self)
+                    )
 
         def __str__(self):
             return repr(self)
@@ -59,15 +73,20 @@ class MutInductive:
             for c in self.constructors:
                 c.ind = self
 
+        def term(self):
+            return Ind(self.mutind.name, self.mutind.inds.index(self))
+
         def __repr__(self):
             return "<inductive %s : %s>" % (self.name, self.type())
 
         def __str__(self):
+            str_constructors = "\n".join(map(lambda c: "\t| " + str(c), self.constructors))
+            if len(self.constructors) == 0:
+                str_constructors = "\tNO CONSTRUCTORS GIVEN."
             return "%s :\n" % self.name + \
                     "\tCONTEXT: %s\n" % (self.context) + \
                     "\tARITY  : %s\n" % self.arity + \
-                    "---\n" + \
-                    "\n".join(map(lambda c: "\t| " + str(c), self.constructors))
+                    "---\n" + str_constructors
 
         @classmethod
         def from_json(cls, json_item):

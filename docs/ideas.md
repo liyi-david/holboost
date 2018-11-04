@@ -21,3 +21,9 @@ designs of extensible term systems (macors)
     - SMTProvable
     - ...
 
+
+how rewrite command can be integrated as a normal proofview
+---
+
+- first make the target formula (to rewrite) as a goal (in the proofview)
+- implement intro
