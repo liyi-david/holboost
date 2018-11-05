@@ -69,3 +69,13 @@ let pr_current_environ () : Pp.std_ppcmds =
             _ -> Global.env ()
     in
     pr_environ env
+
+let pr_sigma () : Pp.std_ppcmds =
+    let sigma, _ = Pfedit.get_current_goal_context () in
+    let open Pp in
+    let count = ref 0 in
+    let cmd = Evd.fold begin fun sigma info cmd ->
+        count := !count + 1;
+        cmd
+    end sigma (str "") in
+    str (Printf.sprintf "evar map contains %d existential variables" (!count))

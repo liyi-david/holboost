@@ -148,6 +148,7 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
         end
     ]
     | [ "Boom" "Print" "Env" ] -> [ Feedback.msg_info (Debug.pr_current_environ ()) ]
+    | [ "Boom" "Print" "Sigma" ] -> [ Feedback.msg_info (Debug.pr_sigma ()) ]
     | [ "Boom" "Print" "Universes" ] -> [
         let sigma_opt, env = 
             try

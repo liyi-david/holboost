@@ -111,12 +111,17 @@ let constr2json (c: Constr.t) : json =
             (* TODO CoFix, Proj *)
             (* FIXME Case *)
             | Case (case_info, _, c, ac) ->
+                    let open Constr in
                     let cases = Array.map begin fun case ->
                         (convert case)
                     end ac in
+                    let json_case_info = `Assoc [
+                        ("ndecls", `List (List.map begin fun ndecl -> `Int ndecl end (Array.to_list case_info.ci_cstr_ndecls)));
+                    ] in
                     let cases = Array.to_list cases in
                     [
                         ("type", `String "case");
+                        ("case_info", json_case_info);
                         ("term_matched", (convert c));
                         ("term_type", (convert (mkInd case_info.ci_ind)));
                         ("cases", `List cases)

@@ -314,7 +314,8 @@ class Cast(Term):
                 )
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
-        kind_strs = [ "<:", "<<:", ":" ]
+        # FIXME
+        kind_strs = [ "<:", "<<:", ":", "???" ]
         return "%s %s %s" % (
                 self.body.render(environment, context, debug),
                 kind_strs[self.cast_kind],
@@ -417,10 +418,22 @@ class Const(Term):
 
 class Case(Term):
     # TODO not finished yet!!
-    def __init__(self):
+    def __init__(self, term_matched, term_type, cases):
         Term.__init__(self)
 
-        pass
+        self.term_matched = term_matched
+        self.term_type = term_type
+        self.cases = cases
+
+    @classmethod
+    def from_json(cls, json_item):
+        term_matched = Term.from_json(json_item['term_matched'])
+        term_type = Term.from_json(json_item['term_type'])
+        cases = list(map(
+            Term.from_json, json_item['cases']
+            ))
+
+        return cls(term_matched, term_type, cases)
 
     def type(self, environment=None, context=[]) -> 'Term':
         raise Exception('unimplemented')
@@ -429,7 +442,12 @@ class Case(Term):
         raise Exception('unimplemented')
 
     def render(self, environment=None, context=[], debug=False) -> 'str':
-        return 'CASE'
+        return "(match %s with %s end)" % (
+                self.term_matched.render(environment, context),
+                " | ".join(
+                    map(lambda t: t.render(environment, context), self.cases)
+                    )
+                )
 
     def __eq__(self, value):
         return False
