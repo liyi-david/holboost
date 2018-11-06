@@ -27,6 +27,7 @@ TACTIC EXTEND boom
             Tacticals.New.tclIDTAC
     end
 ] 
+| [ "boom" "cbv" string(pat) ] -> [ Hbtactics.cbv pat ]
 | [ "boom" "autorewrite" "with" ne_preident_list(l) ] -> [
     let autorewrite_command = `Assoc [
         ("name", `String "rewrite");

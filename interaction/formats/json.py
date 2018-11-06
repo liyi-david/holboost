@@ -47,7 +47,6 @@ class JsonFormat(Format):
                     args = list(map(convert, t['args']))
                     return Apply(convert(t['func']), *args)
                 elif t['type'] == 'case':
-                    print(t.keys())
                     return Case.from_json(t)
                 elif t['type'] == 'cast':
                     return Cast(convert(t['body']), t['cast_kind'], convert(t['guaranteed_type']))
