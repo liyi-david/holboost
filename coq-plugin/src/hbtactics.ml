@@ -22,17 +22,27 @@ let cbv (pattern: string) : unit tactic =
                     let global = pre_env.env_globals in
                     let matched_or_by_notations = Names.Cmap_env.fold begin fun key const lst ->
                         let name = Names.Constant.to_string key in
-                        if Str.string_match re name 0 then
-                            try
-                                let qualid = qualid_of_string name in
-                                let reference = Qualid (None, qualid) in
-                                let _ = Feedback.msg_info Pp.(str "matched: " ++ str name) in
-                                (Misctypes.AN reference) :: lst
-                            with
-                                _ -> lst
-                        else
-                            lst
+                        let constant_body, _ = const in
+                        let open Declarations in
+                        match constant_body.const_body with
+                        | Def _ -> begin
+                            if Str.string_match re name 0 then
+                                try
+                                    let qualid = qualid_of_string name in
+                                    let reference = Qualid (None, qualid) in
+                                    let _ = Feedback.msg_info Pp.(str "matched: " ++ str name) in
+                                    (Misctypes.AN reference) :: lst
+                                with
+                                    _ -> lst
+                            else
+                                lst
+                        end
+                        | _ -> lst
                     end global.env_constants [] in
+                    (*
+                     * one can change the following flag to change the behavior of cbv. also it can be make more flexible
+                     * by changing the syntax of cbv. (though I beleive it is not important by now)
+                     *)
                     let gflag = {
                         rBeta = true;
                         (* as suggested by the reference manual, iota reduction is now a shortcut of the following three flags *)
