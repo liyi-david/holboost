@@ -1,4 +1,4 @@
-from kernel.term import Construct, Ind, Binding, Term, Prod, Sort, SortEnum, Var
+from kernel.term import Construct, Ind, Binding, Term, Prod, Sort, SortEnum, Var, Const
 from kernel.universe import Universe, NativeLevels
 from kernel.universe import Universe, NativeLevels
 
@@ -9,16 +9,12 @@ class Constant:
         self.typ = typ
         self.body = body
         self.is_builtin=is_builtin
-        self.is_variable=False
 
     def type(self, environment=None, context=[]):
         return self.typ
 
     def term(self):
-        if self.is_variable:
-            return Var(self.name)
-        else:
-            return Const(self.name)
+        return Const(self.name)
 
     def render(self, task):
         if self.body is None:
@@ -28,6 +24,14 @@ class Constant:
 
     def __str__(self):
         return self.render(None)
+
+
+class Variable(Constant):
+    def __init__(self, name: 'str', typ: 'Term'):
+        Constant.__init__(self, name, typ)
+
+    def term(self):
+        return Var(self.name)
 
 
 class MutInductive:
@@ -60,7 +64,7 @@ class MutInductive:
                     )
 
         def type(self, environment=None, context=[]):
-            return self.typ.rels_subst([self.ind.as_term()])
+            return self.typ.rels_subst([self.ind.term()])
 
     class Inductive:
         def __init__(self, name: 'str', context, arity, constructors):
@@ -107,9 +111,6 @@ class MutInductive:
 
             ind.raw_arity = Term.from_json(json_item['arity']['arity'])
             return ind
-
-        def as_term(self):
-            return Ind(self.mutind.name, self.mutind.inds.index(self))
 
         def type(self, environment=None, context=[]):
             typ = self.arity

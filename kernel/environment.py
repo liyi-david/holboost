@@ -51,8 +51,12 @@ class Environment:
         if ident in self.__variables:
             raise KeyError("variable %s already exists in the local environment!" % ident)
 
-        from .declaration import Constant
-        self.__variables[ident] = Constant(ident, typ)
+        from .declaration import Variable
+        self.__variables[ident] = Variable(ident, typ)
+
+    def declare_variables(self, idents, typ):
+        for ident in idents:
+            self.declare_variable(ident, typ)
 
     def declare_constant(self, ident, typ, body, is_builtin=False):
         if ident in self.__constants:

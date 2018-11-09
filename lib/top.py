@@ -1,7 +1,9 @@
 from proving import load
 from kernel.environment import Environment
+from kernel.dsl import DSL
 
 import traceback
+
 
 def exec_or_evar(*args):
     try:
@@ -52,6 +54,7 @@ class Top:
             print("Holboost >>> ", end="", flush=True)
 
     def run(self, cmd):
+        cmd = DSL.preprocess(cmd)
         if self.debug_mode:
             exec_or_evar(cmd, self.namespace, self.debug_namespace)
         else:
@@ -84,6 +87,13 @@ class Top:
         with open(filename) as rcfile:
             self.run(rcfile.read())
 
+    # =========================================================================
+
+    # store/restore are used to reduce the communication cost. when a client send
+    # a task to the server, it copies all the builtin definitions to the cache,
+    # which will be stored on a local file and recovered next time when the
+    # holboost shell is open
+
     __local_file = "cache.temp"
 
     def store(self):
@@ -104,6 +114,8 @@ class Top:
             except:
                 self.print("loading cache failed.")
 
+    # =========================================================================
+
     def toploop(self):
         # initialization from local database
         self.restore()
@@ -117,9 +129,15 @@ class Top:
 
         print("Holboost toploop started.")
         multiline_command = ""
+
+        # in two cases, holboost shell jumps to multi-line mode
+        #
+        # 1. the last non-blank character of the current line is `:`, indicating python starts a code block
+        # 2. there is an unclosed `{?`, indicating that the user is typing a DSL fragment
+
         while True:
             if multiline_command != "":
-                # multi-line mode
+                # working in multi-line mode
                 command = input("\rHolboost ... ")
                 if command == "":
                     # run them
@@ -130,7 +148,9 @@ class Top:
                     command = ""
             else:
                 command = input("\rHolboost >>> ")
-                if len(command) > 0 and command.strip()[-1] == ':':
+
+                # jump to multiline-mode
+                if len(command) > 0 and (command.strip()[-1] == ':' or DSL.unclosed_dsl(command)):
                     multiline_command = command + "\n"
                     # do not execute it now
                     command = ""

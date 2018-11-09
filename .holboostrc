@@ -2,6 +2,7 @@ from kernel.term import *
 from kernel.macro import *
 from kernel.proofview import Proofview
 from kernel.environment import *
+from kernel.dsl import DSL
 from proving.pattern.pattern import *
 from proving.pattern.match import *
 from proving.termopr.tuple import *

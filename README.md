@@ -54,4 +54,23 @@ Most features of holboost coq plugin rely on its python backend, use the followi
 
 ### Vernac commands
 
+#### Vernac commands that relies on the python backend
+
+### Native vernac commands
+
 ### Tactics
+
+#### Tactics that relies on the python backend
+
+##### autorewrite
+
+#### Native tactics
+
+##### cbv
+
+`boom cbv` is an enhanced version of `cbv`, whose usage is:
+
+    boom cbv "<regex>"
+
+where the syntax of regex is exactly the same as in ocaml. Holboost automatically finds all constants (with definition, so opaque proofs are excluded) and combine them as
+a `cbv [id1, id2, ..., idn]` tactic.
