@@ -1,6 +1,6 @@
 # lark grammar
 from lark import Lark
-from .preprocessor import preprocess
+from plugins.basic.preprocessor import preprocess
 
 grammar = """
 

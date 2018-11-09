@@ -81,6 +81,28 @@ class Macro(Term, metaclass=abc.ABCMeta):
         else:
             raise Exception("interpretation %s already exist!" % cls.name())
 
+    # ============================ operators ==================================
+
+    # only type macros need to implement the following operators.
+
+    def _eq(self, l, r):
+        raise self.MacroAbuse("'=' is not implemented in the macro %s" % str(type(self)))
+
+    def _neq(self, l, r):
+        raise self.MacroAbuse("'!=' is not implemented in the macro %s" % str(type(self)))
+
+    def _le(self, l, r):
+        raise self.MacroAbuse("'<=' is not implemented in the macro %s" % str(type(self)))
+
+    def _lt(self, l, r):
+        raise self.MacroAbuse("'<' is not implemented in the macro %s" % str(type(self)))
+
+    def _ge(self, l, r):
+        return self._le(r, l)
+
+    def _gt(self, l, r):
+        return self._lt(r, l)
+
 
 class Proof(Term, metaclass=abc.ABCMeta):
 

@@ -1,5 +1,5 @@
 from kernel.macro import Macro
-from kernel.term import Apply, Ind, Const
+from kernel.term import Apply, Ind, Const, Prod
 from enum import Enum
 
 
@@ -65,3 +65,8 @@ def lor(l, r):
 
 def lnot(l):
     return LogicOpr(LogicOpr.OprType.lnot, l)
+
+# term constructors
+def imply(A, B):
+    return Prod(None, A, B)
+
