@@ -23,8 +23,9 @@ else:
 debug('rewrite', )
 
 t = env['O'].term()
+S = env['S'].term()
 for _ in range(10000):
-    t = Apply(env['S'].term(), t)
+    t = Apply(S, t)
 
 # bug here!
 # print(t)

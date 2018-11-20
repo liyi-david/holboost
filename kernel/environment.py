@@ -1,5 +1,19 @@
 from abc import ABCMeta, abstractmethod
 
+"""
+NOTES
+===
+
+make sure to read these notes before starting using function interfaces provided in this file.
+
+1. the query functions, e.g. constants/mutinds/constant/ind/.... are time-consuming. when you try to write
+   a performance-critical function (tactic, rewriting, etc.) please try to AVOID using them
+
+2. TBD
+
+"""
+
+# this is only used as a constant
 lambda_type = type(lambda f: f)
 
 
@@ -146,9 +160,10 @@ class Environment(metaclass=ABCMeta):
         rel = repr(self)
 
         if self.inherited_environment is not None:
-            rel += "\n  |- " + str(self.inherited_environment)
+            return str(self.inherited_environment) + u"\n|- " + rel
+        else:
+            return rel
 
-        return rel
 
 
 class NamedEnvironment(Environment):

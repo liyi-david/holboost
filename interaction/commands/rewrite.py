@@ -83,7 +83,6 @@ class RewriteCommand(Command):
             # forall n:nat, n = n ->   n:nat    (n - 1) + 1 = n
             #                        (context)    (equality)
             self.context, self.equality = obtain_equality(self.type)
-            print(self.type, "\n", self.context, "\n", self.equality)
             self.equality = from_rels(self.context, self.equality)
             # pat_left : (?1 - 1) + 1, pat_right : ?1
             self.pat_left, self.pat_right = self.equality.args[1], self.equality.args[2]

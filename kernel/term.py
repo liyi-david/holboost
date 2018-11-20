@@ -628,12 +628,17 @@ class Apply(Term):
         return typ.rels_subst(self.args), side_effects
 
 
-
     def render(self, environment=None, debug=False) -> 'str':
-        return '({0} {1})'.format(
-                self.func.render(environment, debug),
-                ' '.join(map(lambda t: t.render(environment, debug), self.args))
-                )
+        result = self.func.render(environment, debug)
+        for arg in self.args:
+            result += " " + arg.render(environment, debug)
+
+        return "(%s)" % result
+
+        # THE FOLLOWING CODE LEADS TO CORE DUMP!
+        # return '({0} {1})'.format(
+                # ' '.join(map(lambda t: t.render(environment, debug), self.args))
+                # )
 
     def __eq__(self, value):
         return isinstance(value, Apply) and \
