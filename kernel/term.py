@@ -2,8 +2,8 @@ import abc
 import enum
 
 from .task import Task
-from .environment import Environment
-from .universe import *
+from .environment import Environment, ContextEnvironment
+from .universe import Universe, UniverseInstance, NativeLevels
 
 from lib.common import all_are_same_instances, one_of_them_is
 
@@ -25,12 +25,24 @@ class Binding:
                 None if 'type' not in json_item else Term.from_json(json_item['type'])
                 )
 
-    def __repr__(self):
+    @classmethod
+    def from_term(cls, term):
+        assert isinstance(term, ContextTerm), "grab context binding from only context terms!"
+        return cls(
+            term.arg_name,
+            term.arg_body if isinstance(term, LetIn) else None,
+            term.arg_type
+        )
+
+    def render(self, environment=None, debug=False):
         return "%s%s%s" % (
                 "_" if self.name is None else self.name,
-                "" if self.type is None else " : " + str(self.type),
-                "" if self.value is None else " := " + str(self.value)
+                "" if self.type is None else " : " + self.type.render(environment, debug),
+                "" if self.value is None else " := " + self.value.render(environment, debug)
                 )
+
+    def __repr__(self):
+        return self.render()
 
 
 
@@ -53,11 +65,11 @@ class Term(abc.ABC):
         return JsonFormat.export_term(self)
 
     @abc.abstractmethod
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         pass
 
     @abc.abstractmethod
-    def check(self, environment=None, context=[]) -> 'Term * list(LevelConstraint)':
+    def check(self, environment=None) -> 'Term * list(LevelConstraint)':
         """
         when `type` is called, we always assume that the term itself is type-safe. however, sometimes
         we manually construct a term (not imported from Coq or other tools), in this case we need to
@@ -71,12 +83,12 @@ class Term(abc.ABC):
         """
         pass
 
-    def side_effects(self, environment, context=[]):
-        _, s = self.check(environment, context)
+    def side_effects(self, environment):
+        _, s = self.check(environment)
         return s
 
     @abc.abstractmethod
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         pass
 
     @abc.abstractmethod
@@ -181,7 +193,7 @@ class Sort(Term):
         if self.sort is SortEnum.type:
             assert self.univ is not None, "types should always declared with universes"
 
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         if self.sort is SortEnum.prop:
             return Sort(SortEnum.type, Universe.from_level(NativeLevels.Prop(), 1))
         if self.sort is SortEnum.set:
@@ -189,10 +201,10 @@ class Sort(Term):
         else:
             return Sort(SortEnum.type, univ=self.univ + 1)
 
-    def check(self, environment=None, context=[]) -> 'Term * set(LevelConstraint)':
-        return self.type(environment, context), set()
+    def check(self, environment=None) -> 'Term * set(LevelConstraint)':
+        return self.type(environment), set()
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return self.sort.value + \
                 ("@{%s}" % self.univ if self.univ is not None else "")
 
@@ -261,13 +273,12 @@ class Cast(Term):
         self.cast_kind = cast_kind
         self.guaranteed_type = guaranteed_type
 
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         return self.guaranteed_type
 
-    def check(self, environment=None, context=[]):
-        # print(self.render(environment, context))
-        term_type, term_side_effect = self.body.check(environment, context)
-        _, guaranteed_side_effect = self.guaranteed_type.check(environment, context)
+    def check(self, environment=None):
+        term_type, term_side_effect = self.body.check(environment)
+        _, guaranteed_side_effect = self.guaranteed_type.check(environment)
 
 
         def is_subtype(l, r):
@@ -285,12 +296,12 @@ class Cast(Term):
             # else:
                 # raise Exception("unimplemented subtyping %s : %s" % (l.render(environment, context), r.render(environment, context)))
 
-            rawl, rawr = l, r
+            # rawl, rawr = l, r
             typing_counter = 0
             # print("subtyping %s and %s" % (l.render(environment, context), r.render(environment, context)))
 
             while not isinstance(l, Sort) or not isinstance(r, Sort) or l.sort != SortEnum.type or r.sort != SortEnum.type:
-                l, r = l.type(environment, context), r.type(environment, context)
+                l, r = l.type(environment), r.type(environment)
                 typing_counter += 1
 
             # print("subtyping %s and %s" % (l.render(environment, context), r.render(environment, context)))
@@ -313,13 +324,13 @@ class Cast(Term):
                 guaranteed_side_effect
                 )
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         # FIXME
         kind_strs = [ "<:", "<<:", ":", "???" ]
         return "%s %s %s" % (
-                self.body.render(environment, context, debug),
+                self.body.render(environment, debug),
                 kind_strs[self.cast_kind],
-                self.guaranteed_type.render(environment, context, debug)
+                self.guaranteed_type.render(environment, debug)
                 )
 
     def __eq__(self, value):
@@ -353,7 +364,7 @@ class Const(Term):
         else:
             self.univ_inst = univ_inst
 
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         if environment is None:
             environment = Environment.default()
             if environment is None:
@@ -365,12 +376,14 @@ class Const(Term):
         else:
             raise TypeError("constant %s not found in the given environment" % self.name)
 
-        return const.type(environment, context)
+        return const.type(environment)
 
-    def check(self, environment=None, context=[]):
-        return self.type(environment, context), set()
+    def check(self, environment=None):
+        # we assume that when a const is defined, all its side-effects should
+        # have been added to the environment
+        return self.type(environment,), set()
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         if environment is None:
             environment = Environment.default()
             if environment is None:
@@ -380,7 +393,7 @@ class Const(Term):
         univ_inst_str = str(self.univ_inst)
 
         try:
-            const = environment.constant(self.name)[0]
+            _ = environment.constant(self.name)[0]
             found = True
         except IndexError:
             pass
@@ -401,7 +414,7 @@ class Const(Term):
     def subterms_subst(self, subterms):
         return self
 
-    def unfold(self, environment=None, context=[]):
+    def unfold(self, environment=None):
         if environment is None:
             environment = Environment.default()
             if environment is None:
@@ -435,17 +448,17 @@ class Case(Term):
 
         return cls(term_matched, term_type, cases)
 
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         raise Exception('unimplemented')
 
-    def check(self, environment=None, context=[]) -> 'Term':
+    def check(self, environment=None) -> 'Term':
         raise Exception('unimplemented')
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return "(match %s with %s end)" % (
-                self.term_matched.render(environment, context),
+                self.term_matched.render(environment),
                 " | ".join(
-                    map(lambda t: t.render(environment, context), self.cases)
+                    map(lambda t: t.render(environment), self.cases)
                     )
                 )
 
@@ -466,13 +479,13 @@ class Evar(Term):
 
         pass
 
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         raise Exception('unimplemented')
 
-    def check(self, environment=None, context=[]) -> 'Term':
+    def check(self, environment=None) -> 'Term':
         raise Exception('unimplemented')
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return 'EVAR'
 
     def __eq__(self, value):
@@ -487,7 +500,7 @@ class Evar(Term):
 
 class Var(Const):
 
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         if environment is None:
             environment = Environment.default()
             if environment is None:
@@ -499,12 +512,12 @@ class Var(Const):
         else:
             raise TypeError("variable %s not found in the given environment" % self.name)
 
-        return var.type(environment, context)
+        return var.type(environment)
 
-    def check(self, environment=None, context=[]):
-        return self.type(environment, context), set()
+    def check(self, environment=None):
+        return self.type(environment), set()
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         univ_inst_str = str(self.univ_inst)
         return self.name + univ_inst_str
 
@@ -516,38 +529,32 @@ class Rel(Term):
         # all indexes in holboost must start from zero !!!!!!
         self.index = index
 
-    def type(self, environment=None, context=[]) -> 'Term':
-        binding = self.get_binding(context)
+    def type(self, environment=None) -> 'Term':
+        binding = environment.rel(self.index)
         if binding is None:
             raise TypingUnclosedError()
 
         if binding.type is None:
             if binding.value is not None:
-                return binding.value.type(
-                        environment,
-                        context[:context.index(binding)]
-                        )
+                return binding.value.type(environment.inherited_environment)
             else:
                 raise TypeError
 
         return binding.type
 
-    def check(self, environment=None, context=[]):
-        return self.type(environment, context), set()
+    def check(self, environment=None):
+        return self.type(environment), set()
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
-        binding = self.get_binding(context)
+    def render(self, environment=None, debug=False) -> 'str':
+        try:
+            binding = None if environment is None else environment.rel(self.index)
+        except IndexError:
+            binding = None
+
         if binding is None or binding.name is None or debug:
             return "_REL_%d_" % self.index
         else:
             return binding.name
-
-    def get_binding(self, context):
-        # if self.index = 0, we get the last bounded variable, e.g. context[-1]
-        if len(context) <= self.index:
-            return None
-
-        return context[ -1 * (self.index + 1) ]
 
     def __eq__(self, value):
         return isinstance(value, Rel) and value.index == self.index
@@ -572,22 +579,23 @@ class Rel(Term):
 
 
 class Apply(Term):
+
     def __init__(self, func: 'Term', *args: 'Term'):
         Term.__init__(self)
 
         self.func = func
         self.args = args
 
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         # if the type of func is A -> B -> C and there are two arguments, then the type of the whole term
         # should be C
         # if there is only one argument, it should be B -> C
         # ..
 
-        typ = self.func.type(environment, context)
-        for i in range(len(self.args)):
+        typ = self.func.type(environment)
+        for _ in range(len(self.args)):
             while isinstance(typ, Const):
-                typ = typ.unfold(environment, context)
+                typ = typ.unfold(environment)
 
             typ = typ.body
 
@@ -597,34 +605,34 @@ class Apply(Term):
 
         return typ.rels_subst(self.args)
 
-    def check(self, environment=None, context=[]):
-        typ, side_effects = self.func.check(environment, context)
+    def check(self, environment=None):
+        typ, side_effects = self.func.check(environment)
 
-        bindings = context.copy()
+        env = environment
         for arg in self.args:
             while isinstance(typ, Const):
-                typ = typ.unfold(environment, bindings)
+                typ = typ.unfold(environment)
 
             # print("CHECKING", arg, "BINDING", bindings)
             if isinstance(typ, Prod):
                 """
                 if f : A -> B is applied to a, i.e. (f a), we need to make sure (a : A)
                 """
-                side_effects.update(Cast(arg, 0, typ.arg_type).side_effects(environment, bindings))
+                side_effects.update(Cast(arg, 0, typ.arg_type).side_effects(env))
 
-                bindings.append(Binding(None, arg, None))
+                env = ContextEnvironment(Binding(None, arg, None), env)
                 typ = typ.body
             else:
-                raise TypingUnclosedError("cannot apply %s to %s" % (typ.render(environment, context), arg.render(environment, context)))
+                raise TypingUnclosedError("cannot apply %s to %s" % (typ.render(environment), arg.render(environment)))
 
         return typ.rels_subst(self.args), side_effects
 
 
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return '({0} {1})'.format(
-                self.func.render(environment, context, debug),
-                ' '.join(map(lambda t: t.render(environment, context, debug), self.args))
+                self.func.render(environment, debug),
+                ' '.join(map(lambda t: t.render(environment, debug), self.args))
                 )
 
     def __eq__(self, value):
@@ -649,17 +657,17 @@ class ContextTerm(Term):
 
 
 class Prod(ContextTerm):
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         """
         please refer to https://coq.inria.fr/distrib/current/refman/language/cic.html
         for the typing rules
         """
-        body_type = self.body.type(environment, context + [Binding(self.arg_name, None, self.arg_type)])
+        body_type = self.body.type(ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment))
         assert isinstance(body_type, Sort)
         if body_type.sort is SortEnum.prop:
             return body_type
         else:
-            type_of_arg_type = self.arg_type.type(environment, context)
+            type_of_arg_type = self.arg_type.type(environment)
             assert isinstance(type_of_arg_type, Sort)
             if body_type.sort is SortEnum.set:
                 if type_of_arg_type is SortEnum.prop or type_of_arg_type is SortEnum.set:
@@ -671,17 +679,16 @@ class Prod(ContextTerm):
                         Universe.union(body_type.univ, type_of_arg_type.univ)
                         )
 
-    def check(self, environment=None, context=[]):
+    def check(self, environment=None):
         # we need to check everything for correct generation of side effect
-        body_type, body_sideff = self.body.check(environment, context + [Binding(self.arg_name, None, self.arg_type)])
-        type_of_arg_type, type_of_arg_sideff = self.arg_type.check(environment, context)
+        body_type, body_sideff = self.body.check(ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment))
+        type_of_arg_type, type_of_arg_sideff = self.arg_type.check(environment)
 
         sideff = set.union(body_sideff, type_of_arg_sideff)
         assert isinstance(body_type, Sort)
         if body_type.sort is SortEnum.prop:
             return body_type, sideff
         else:
-            # print(context)
             assert isinstance(type_of_arg_type, Sort), "type_of_arg_type %s: %s" % (self.arg_type, type_of_arg_type)
             if body_type.sort is SortEnum.set:
                 if type_of_arg_type is SortEnum.prop or type_of_arg_type is SortEnum.set:
@@ -691,20 +698,19 @@ class Prod(ContextTerm):
             else:
                 return Sort.mkType(Universe.union(body_type.univ, type_of_arg_type.univ)), sideff
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         if self.arg_name is None:
             # arrow form
             return "{0} -> {1}".format(
-                    self.arg_type.render(environment, context, debug),
-                    self.body.render(environment, context + [Binding(self.arg_name, None, self.arg_type)], debug)
-                    )
+                    self.arg_type.render(environment, debug),
+                    self.body.render(ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment), debug))
         else:
             # forall form
             # combine multiple foralls if possible
             return "forall {0}: {1}, {2}".format(
                     self.arg_name,
-                    self.arg_type.render(environment, context, debug),
-                    self.body.render(environment, context + [Binding(self.arg_name, None, self.arg_type)], debug)
+                    self.arg_type.render(environment, debug),
+                    self.body.render(ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment), debug)
                     )
 
     def __eq__(self, value):
@@ -726,24 +732,26 @@ class LetIn(ContextTerm):
 
         self.arg_body = arg_body
 
-    def type(self, environment=None, context=[]) -> 'Term':
-        return self.body.type(environment, context + [Binding(self.arg_name, self.arg_body, self.arg_type)])
+    def type(self, environment=None, ) -> 'Term':
+        return self.body.type(ContextEnvironment(Binding(self.arg_name, self.arg_body, self.arg_type), environment))
 
     def check(self, environment=None, context=[]):
-        body_typ, body_sideff = self.body.check(environment, context + [Binding(self.arg_name, self.arg_body, self.arg_type)])
-        _, arg_sideff = self.arg_type.check(environment, context)
+        body_typ, body_sideff = self.body.check(
+            ContextEnvironment(Binding(self.arg_name, self.arg_body, self.arg_type), environment)
+            )
+        _, arg_sideff = self.arg_type.check(environment)
         return body_typ, set.union(
                 body_sideff,
                 arg_sideff,
-                Cast(arg_body, 0, arg_type).side_effects(environment, context)
+                Cast(self.arg_body, 0, self.arg_type).side_effects(environment)
                 )
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return "let {0} : {1} := {2} in {3}".format(
                 self.arg_name,
-                self.arg_type.render(environment, context, debug),
-                self.arg_body.render(environment, context, debug),
-                self.body.render(environment, context + [Binding(self.arg_name, self.arg_body, self.arg_type)], debug)
+                self.arg_type.render(environment, debug),
+                self.arg_body.render(environment, debug),
+                self.body.render(ContextEnvironment(Binding(self.arg_name, self.arg_body, self.arg_type), environment), debug)
                 )
 
     def __eq__(self, value):
@@ -762,19 +770,22 @@ class LetIn(ContextTerm):
 
 class Lambda(ContextTerm):
 
-    def type(self, environment=None, context=[]) -> 'Term':
-        return Prod(None, self.arg_type, self.body.type(environment, context + [Binding(self.arg_name, None, self.arg_type)]))
+    def type(self, environment=None) -> 'Term':
+        return Prod(None, self.arg_type, self.body.type(
+            ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment)
+            )
+        )
 
-    def check(self, environment=None, context=[]):
-        _, arg_sideff = self.arg_type.check(environment, context)
-        body_typ, body_sideff = self.body.check(environment, context + [Binding(self.arg_name, None, self.arg_type)])
+    def check(self, environment=None):
+        _, arg_sideff = self.arg_type.check(environment)
+        body_typ, body_sideff = self.body.check(ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment))
         return Prod(None, self.arg_type, body_typ), set.union(arg_sideff, body_sideff)
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         return "fun ({0}: {1}) => {2}".format(
                 self.arg_name if self.arg_name is not None else "_",
-                self.arg_type.render(environment, context, debug),
-                self.body.render(environment, context + [Binding(self.arg_name, None, self.arg_type)], debug)
+                self.arg_type.render(environment, debug),
+                self.body.render(ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment), debug)
                 )
 
     def __eq__(self, value):
@@ -802,7 +813,7 @@ class Construct(Term):
         else:
             self.univ_inst = univ_inst
 
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         if environment is None:
             environment = Environment.default()
             if environment is None:
@@ -814,12 +825,12 @@ class Construct(Term):
         else:
             raise TypeError("mut-inductive %s does not belong to the given environment" % self.mutind_name)
 
-        return mutind.inds[self.ind_index].constructors[self.constructor_index].type(environment, context)
+        return mutind.inds[self.ind_index].constructors[self.constructor_index].type(environment)
 
-    def check(self, environment=None, context=[]):
-        return self.type(environment, context), set()
+    def check(self, environment=None):
+        return self.type(environment), set()
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         if environment is None:
             environment = Environment.default()
             if environment is None:
@@ -866,7 +877,7 @@ class Ind(Term):
             assert(isinstance(univ_inst, UniverseInstance))
             self.univ_inst = univ_inst
 
-    def type(self, environment=None, context=[]) -> 'Term':
+    def type(self, environment=None) -> 'Term':
         if environment is None:
             environment = Environment.default()
             if environment is None:
@@ -878,18 +889,17 @@ class Ind(Term):
         else:
             raise TypeError("mut-inductive %s does not belong to the given environment" % self.mutind_name)
 
-        return mutind.inds[self.ind_index].type(environment, context)
+        return mutind.inds[self.ind_index].type(environment)
 
-    def check(self, environment=None, context=[]):
-        return self.type(environment, context), set()
+    def check(self, environment=None):
+        return self.type(environment), set()
 
-    def render(self, environment=None, context=[], debug=False) -> 'str':
+    def render(self, environment=None, debug=False) -> 'str':
         if environment is None:
             environment = Environment.default()
             if environment is None:
                 raise Exception("cannot typing a term with no environment specified")
 
-        ind_name = None
         univ_inst_str = str(self.univ_inst)
 
         try:

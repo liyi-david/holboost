@@ -1,7 +1,24 @@
-class Environment:
+from abc import ABCMeta, abstractmethod
+
+lambda_type = type(lambda f: f)
+
+
+class EnvironmentOverflow(Exception):
+    pass
+
+class Environment(metaclass=ABCMeta):
 
     __default_environment = None
     __external_default_environment = None
+
+    def __init__(self):
+        self.inherited_environment = None
+
+    # when an environment is inherited, it should not be changed!
+    _blocked = False
+
+    def block(self): self._blocked = True
+    def unblock(self): self._blocked = False
 
     @classmethod
     def set_default(cls, env):
@@ -20,15 +37,134 @@ class Environment:
         assert isinstance(env, cls)
         cls.__external_default_environment = env
 
+    # ============================ abstract interfaces ========================
+
+    @abstractmethod
+    def constants(self):
+        pass
+
+    @abstractmethod
+    def variables(self):
+        pass
+
+    @abstractmethod
+    def mutinds(self):
+        pass
+
+    @abstractmethod
+    def inds(self):
+        pass
+
+    @abstractmethod
+    def constructors(self):
+        pass
+
+    def rel(self, index):
+        """
+        index starts from zero !
+        """
+        if self.inherited_environment is not None:
+            return self.inherited_environment.rel(index)
+        else:
+            raise IndexError("cannot find relational variable!")
+
+    @abstractmethod
+    def lookup_by_binding(self, binding):
+        pass
+
+    # =========================== common interfaces ===========================
+
+    def constant(self, _filter):
+        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
+
+        return list(filter(
+            lambda item: _filter(item.name), self.constants().values()
+            ))
+
+    def variable(self, _filter):
+        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
+
+        return list(filter(
+            lambda item: _filter(item.name), self.variables().values()
+            ))
+
+    def mutind(self, _filter):
+        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
+
+        return list(filter(
+            lambda item: _filter(item.name), self.mutinds().values()
+            ))
+
+    def ind(self, _filter):
+        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
+
+        return list(filter(
+            lambda ind: _filter(ind.name),
+            self.inds().values()
+            ))
+
+    def constructor(self, _filter):
+        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+
+        if isinstance(_filter, str):
+            name = _filter
+            _filter = lambda s: s == name
+
+        return list(filter(
+            lambda c: _filter(c.name),
+            self.constructors().values()
+            ))
+
+    # =============================== syntax sugars ===========================
+
+    def __getitem__(self, ident):
+        filt = lambda n: n.split(".")[-1] == ident
+        results = self.variable(filt) + self.constant(filt) + self.constructor(filt) + self.ind(filt) + self.mutind(filt)
+
+        if len(results) > 0:
+            return results[0]
+        else:
+            raise KeyError("identifier %s is not found." % ident)
+
+    def __str__(self):
+        rel = repr(self)
+
+        if self.inherited_environment is not None:
+            rel += "\n  |- " + str(self.inherited_environment)
+
+        return rel
+
+
+class NamedEnvironment(Environment):
+
     def __init__(self, constants={}, mutinds={}, variables={}):
+        Environment.__init__(self)
+
         self.__constants = constants
         self.__mutinds = mutinds
         self.__variables = variables
 
-        self.inherited_environment = None
-
     def get_builtins(self):
-        builtins = Environment()
+        """
+        only named environments carries builtins
+        """
+        builtins = NamedEnvironment()
 
         for const in self.__constants.values():
             if const.is_builtin:
@@ -41,7 +177,10 @@ class Environment:
         return builtins
 
     def __iadd__(self, env):
-        assert isinstance(env, Environment)
+        """
+        the '+=' operator only changes mut-inductives and definition
+        """
+        assert isinstance(env, NamedEnvironment)
         self.__constants.update(env.constants())
         self.__mutinds.update(env.mutinds())
 
@@ -123,102 +262,86 @@ class Environment:
 
         return constructors
 
-
-    def constant(self, _filter):
-        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
-
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
-
-        return list(filter(
-            lambda item: _filter(item.name), self.constants().values()
-            ))
-
-    def variable(self, _filter):
-        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
-
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
-
-        return list(filter(
-            lambda item: _filter(item.name), self.variables().values()
-            ))
-
-    def mutind(self, _filter):
-        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
-
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
-
-        return list(filter(
-            lambda item: _filter(item.name), self.mutinds().values()
-            ))
-
-    def ind(self, _filter):
-        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
-
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
-
-        return list(filter(
-            lambda ind: _filter(ind.name),
-            self.inds().values()
-            ))
-
-
-    def constructor(self, _filter):
-        assert isinstance(_filter, (str, type(lambda f: f))), "string or lambda functions are supposed when looking up declarations"
-
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
-
-        return list(filter(
-            lambda c: _filter(c.name),
-            self.constructors().values()
-            ))
-
-
-
-    def __getitem__(self, ident):
-        filt = lambda n: n.split(".")[-1] == ident
-        results = self.variable(filt) + self.constant(filt) + self.constructor(filt) + self.ind(filt) + self.mutind(filt)
-
-        if len(results) > 0:
-            return results[0]
+    def lookup_by_binding(self, binding):
+        if self.inherited_environment is None:
+            raise EnvironmentOverflow
         else:
-            raise KeyError("identifier %s is not found." % ident)
+            return self.inherited_environment.lookup_by_binding(binding)
 
     def __repr__(self):
-        return "<holboost environment with %d constants, %d mut-inductives and %d variables%s>" % (
+        return "<holboost named environment with %d constants, %d mut-inductives and %d variables%s>" % (
                 len(self.__constants),
                 len(self.__mutinds),
                 len(self.__variables),
                 "" if self.inherited_environment is None else ", inherited"
                 )
 
-    def __str__(self):
-        rel = "<holboost environment with %d constants, %d mut-inductives and %d variables>" % (
-                len(self.__constants),
-                len(self.__mutinds),
-                len(self.__variables)
-                )
 
-        if self.inherited_environment is not None:
-            rel += "\n  |- " + str(self.inherited_environment)
-
-        return rel
-
-
-class BindingEnvironment:
+class ContextEnvironment(Environment):
 
     def __init__(self, binding, env):
+        Environment.__init__(self)
+
         self.binding = binding
         self.inherited_environment = env
 
-    def __getattr__(self, ident):
-        pass
+    def constants(self):
+        if self.inherited_environment is not None:
+            return self.inherited_environment.constants()
+        else:
+            return {}
+
+    def variables(self):
+        if self.inherited_environment is not None:
+            return self.inherited_environment.variables()
+        else:
+            return {}
+
+    def mutinds(self):
+        if self.inherited_environment is not None:
+            return self.inherited_environment.mutinds()
+        else:
+            return {}
+
+    def inds(self):
+        if self.inherited_environment is not None:
+            return self.inherited_environment.inds()
+        else:
+            return {}
+
+    def constructors(self):
+        if self.inherited_environment is not None:
+            return self.inherited_environment.constructors()
+        else:
+            return {}
+
+    def rel(self, index):
+        if index == 0:
+            return self.binding
+        else:
+            if self.inherited_environment is not None:
+                return self.inherited_environment.rel(index - 1)
+            else:
+                raise KeyError("unbounded variable index %d" % index)
+
+    def length(self):
+        l = 1
+        pt = self
+        while pt.inherited_environment is not None and isinstance(pt.inherited_environment, ContextEnvironment):
+            pt = pt.inherited_environment
+            l += 1
+
+        return l
+
+    def lookup_by_binding(self, binding):
+        if self.binding == binding:
+            return self, 0
+        else:
+            if self.inherited_environment is None:
+                raise EnvironmentOverflow
+
+            ctx, index = self.inherited_environment.lookup_by_binding(binding)
+            return ctx, index + 1
+
+    def __repr__(self):
+        return "<holboost context: (%s)>" % self.binding.render(self.inherited_environment)

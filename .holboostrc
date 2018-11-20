@@ -3,9 +3,6 @@ from kernel.macro import *
 from kernel.proofview import Proofview
 from kernel.environment import *
 from kernel.dsl import DSL
-from proving.pattern.pattern import *
-from proving.pattern.match import *
-from proving.termopr.tuple import *
 
 from plugins import load_plugins
 from interaction.formats.json import JsonFormat
@@ -15,9 +12,19 @@ load_plugins(top)
 
 # set default environment
 if "coq" in cache:
-    env = Environment()
+    env = NamedEnvironment()
     env.inherited_environment = cache['coq']
     Environment.set_default(env)
     # del cache['coq']
+else:
+    env = NamedEnvironment()
+    Environment.set_default(env)
 
-debug('rewrite')
+debug('rewrite', )
+
+t = env['O'].term()
+for _ in range(10000):
+    t = Apply(env['S'].term(), t)
+
+# bug here!
+# print(t)

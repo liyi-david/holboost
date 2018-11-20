@@ -1,9 +1,74 @@
-from proving.pattern.match import *
-from proving.tactics.rewrite import *
-from proving.termopr.tuple import *
+from kernel.term import *
+from kernel.environment import ContextEnvironment
 
-from .result import TermResult, EmptyResult
+from plugins.basic.patternmatching import *
+
 from .command import Command
+
+
+def tuple_nth(t: Term, n: int, typ: Term = None) -> Term:
+
+    """
+    this function automatically generates the nth operator based on a set
+    of fst/snd operations
+    """
+
+    fst = Const("Coq.Init.Datatypes.fst")
+    snd = Const("Coq.Init.Datatypes.snd")
+    pair = Construct("Coq.Init.Datatypes.prod", 0, 0)
+    prod = Ind("Coq.Init.Datatypes.prod", 0)
+
+    is_tuple = False
+    if typ is not None:
+        is_tuple = isinstance(typ, Apply) and typ.func == prod
+    else:
+        is_tuple = isinstance(t, Apply) and t.func == pair
+
+    if is_tuple:
+        fst_type, snd_type = (t if typ is None else typ).args[0:2]
+        if n == 0:
+            # in this case we are obtaining a middle element in the tuple
+            return Apply(fst, fst_type, snd_type, t)
+        else:
+            return tuple_nth(
+                    Apply(snd, fst_type, snd_type, t),
+                    n - 1,
+                    snd_type
+                    )
+    else:
+        assert n == 0, "you can only obtain the 0th element in a non-tuple"
+        return t
+
+def is_equality_relation(term):
+    # according to coq's implementation, there are two types of equality, they are
+    # setoid equality and leibniz equality
+    if isinstance(term, Ind):
+        # for leibniz equality
+        # FIXME
+        return term.mutind_name == "Coq.Init.Logic.eq"
+
+    return False
+
+def obtain_equality(term):
+    """
+    given a term in form of:
+
+        forall a, forall b, forall c, .... = ....
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~
+                   context              equality
+
+    the function separates the context part and the equality part
+    """
+    context = None
+
+    while term is not None:
+        if isinstance(term, Apply) and is_equality_relation(term.func):
+            return context, term
+        elif isinstance(term, Prod):
+            context = ContextEnvironment(Binding.from_term(term), context)
+            term = term.body
+        else:
+            raise Exception("no equality found in %s" % str(term))
 
 
 class RewriteCommand(Command):
@@ -18,6 +83,7 @@ class RewriteCommand(Command):
             # forall n:nat, n = n ->   n:nat    (n - 1) + 1 = n
             #                        (context)    (equality)
             self.context, self.equality = obtain_equality(self.type)
+            print(self.type, "\n", self.context, "\n", self.equality)
             self.equality = from_rels(self.context, self.equality)
             # pat_left : (?1 - 1) + 1, pat_right : ?1
             self.pat_left, self.pat_right = self.equality.args[1], self.equality.args[2]
@@ -43,6 +109,8 @@ class RewriteCommand(Command):
 
         match_result = match(patterns, self.task.goal, match_subterm=True, environment=self.task, top=top)
 
+        top.debug("rewrite", "match finished.")
+
         # now let us construct the proof-term to apply
         # the basic idea is, if we wanna replace a with b, c with d, then first construct a proof
         # for a, b = c, d
@@ -55,14 +123,16 @@ class RewriteCommand(Command):
 
         if len(match_result.matches) is 0:
             # no match found, failed to rewrite
-            return EmptyResult()
+            return None
 
         # it is important to use reversed here, since a pair (a, b, c) is actually constructed as
         # (a, (b, c)) in coq, so first we prove that b, c = b', c' instead of a and a'
         for one_match in reversed(match_result.matches):
             hint = self.get_hint_by_left_pattern(one_match.pattern)
 
-            eq_hyp_args = [one_match.metavar_map[i] for i in range(len(hint.context))]
+            # TODO: find why the args are reversed???
+            eq_hyp_args = [one_match.metavar_map[i] for i in range(hint.context.length())]
+            eq_hyp_args.reverse()
             eq_hyp = Apply(hint.lemma, *eq_hyp_args)
             top.debug("rewrite", "eq hypothesis: ", eq_hyp.render(self.task))
 

@@ -1,7 +1,7 @@
-from .environment import Environment
+from .environment import NamedEnvironment, Environment
 from time import time
 
-class Task(Environment):
+class Task(NamedEnvironment):
 
     # the current running task
     # it should be extended to support parallel execution in the future
@@ -9,7 +9,7 @@ class Task(Environment):
     current = None
 
     def __init__(self, goal, constants={}, variables={}, mutinds={}, command=None, client=None):
-        Environment.__init__(self, constants, mutinds, variables)
+        NamedEnvironment.__init__(self, constants, mutinds, variables)
 
         self.goal = goal
         self.command = command

@@ -1,7 +1,7 @@
 from interaction.formats.format import Format
 from kernel.declaration import *
 from kernel.term import *
-from kernel.task import Task, Environment
+from kernel.task import Task, NamedEnvironment
 from kernel.universe import *
 
 from interaction.commands import *
@@ -140,7 +140,7 @@ class JsonFormat(Format):
 
     @staticmethod
     def import_environment(json_item):
-        env = Environment()
+        env = NamedEnvironment()
         if 'constants' in json_item:
             env.constants = { c['constant_name'] : JsonFormat.import_constant(c) for c in json_item['constants'] }
         if 'variables' in json_item:

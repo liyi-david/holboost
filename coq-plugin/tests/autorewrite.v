@@ -13,6 +13,7 @@ Hypothesis H2: forall (A:Type), forall (a:A), (f a) = (g a).
 Hint Rewrite H : wtf.
 Hint Rewrite (H2 nat) : wtf.
 
+(*
 Goal
     (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + 
     (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + 
@@ -35,9 +36,9 @@ Goal
     (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + 
     (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + 
     (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0).
-
+*)
 (* make it easier to debug first ....... *)
-(* Goal (f 1) + (f 1) = (g 0) + (g 0). *)
+Goal (f 1) + (f 1) = (g 0) + (g 0).
 
     boom autorewrite with wtf.
     auto.

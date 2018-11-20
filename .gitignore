@@ -111,3 +111,30 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# ocaml
+*.annot
+*.cmo
+*.cma
+*.cmi
+*.a
+*.o
+*.cmx
+*.cmxs
+*.cmxa
+
+
+# coq
+*.ml.d
+*.ml4.d
+*.vo
+*.mli.d
+*.merlin
+*.aux
+*.glob
+*.v.d
+*~
+
+
+# vscode
+.vscode

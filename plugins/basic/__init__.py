@@ -1,6 +1,7 @@
 from kernel.term import *
 
 from .boom import BoomLanguage
+from .patternmatching import *
 
 # some global shortcuts
 Prop = Sort.mkProp()

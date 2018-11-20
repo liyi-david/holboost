@@ -1,8 +1,9 @@
-from proving.pattern.pattern import *
 from kernel.term import *
 from lib.common import *
+from lib.top import Top
 
-autoload = True
+from .pattern import *
+
 
 class MatchFailure(Exception):
     def __init__(self, pat, term):
@@ -86,13 +87,13 @@ def match_at(pattern, term, environment=None, top=None):
             else:
                 # we got a match !
                 # but only after the type check ...
-                if pattern.type is not None:
+                if pattern.typ is not None:
                     if environment is None:
                         raise Exception("no environment is given when performing typed pattern-match processes")
 
                     # FIXME double check
                     try:
-                        try_match(pattern.type, term.type(environment))
+                        try_match(pattern.typ, term.type(environment))
                     except TypingUnclosedError:
                         raise MatchFailure(pattern, term)
 
@@ -144,6 +145,12 @@ def match(patterns, term, match_subterm=False, environment=None, top=None):
     """
     if isinstance(patterns, Term):
         patterns = [ patterns ]
+
+    if environment is None:
+        environment = Environment.default()
+
+    if top is None:
+        top = Top.default()
 
     match_result = MatchResult(term)
 

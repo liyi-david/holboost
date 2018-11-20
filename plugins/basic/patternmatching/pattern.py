@@ -1,4 +1,7 @@
 from kernel.term import *
+from kernel.environment import ContextEnvironment, EnvironmentOverflow
+
+from lib.top import Top
 
 """
 a pattern is also a term, but it may contains
@@ -16,16 +19,16 @@ class Meta(Term):
         index can be None
         """
         self.index = index
-        self.type = type
+        self.typ = type
 
-    def type(self, environment, context=[]):
+    def type(self, environment):
         raise PatternAbuse("type of patterns cannot be evaluated")
 
-    def check(self, environment, context=[]):
+    def check(self, environment):
         raise PatternAbuse("type of patterns cannot be evaluated")
 
-    def render(self, environment=None, context=[], debug=False):
-        return "?(%s: %s)" % ("_" if self.index is None else self.index, self.type.render(environment, context, debug))
+    def render(self, environment=None, debug=False):
+        return "?(%s: %s)" % ("_" if self.index is None else self.index, self.typ.render(environment, debug))
 
     def __eq__(self, value):
         raise PatternAbuse()
@@ -46,72 +49,77 @@ class Alias(Term):
         self.alias = alias
         self.sub_pattern = sub_pattern
 
-    def type(self, environment, context=[]):
+    def type(self, environment):
         raise PatternAbuse("type of patterns cannot be evaluated")
 
-    def check(self, environment, context=[]):
+    def check(self, environment):
         raise PatternAbuse("type of patterns cannot be evaluated")
 
-    def render(self, environment=None, context=[], debug=False):
-        return "(%s) as ?%s" % (self.sub_pattern.render(environment, context, debug), self.alias)
+    def render(self, environment=None, debug=False):
+        return "(%s) as ?%s" % (self.sub_pattern.render(environment, debug), self.alias)
 
     def __eq__(self, value):
         raise PatternAbuse()
 
     def subterms(self):
-        raise PatternAbouse()
+        raise PatternAbuse()
 
     def subterms_subst(self, subterms):
         raise PatternAbuse()
 
 
-def from_rels(outside_context, term):
+def from_rels(outside_context_env, term, top=None):
+    if top is None:
+        top = Top.default()
 
-    def generate(context, term):
+    def generate(environment, term):
+        top.debug('pattern', 'from rels', environment, term)
         if isinstance(term, Prod):
             return Prod(
                     term.arg_name,
-                    generate(context, term.arg_type),
-                    generate(context + [term], term.body_type)
+                    generate(environment, term.arg_type),
+                    generate(ContextEnvironment(Binding.from_term(term), environment), term.body_type)
                     )
         elif isinstance(term, Lambda):
             return Lambda(
                     term.arg_name,
-                    generate(context, term.arg_type),
-                    generate(context + [term], term.body_type)
+                    generate(environment, term.arg_type),
+                    generate(ContextEnvironment(Binding.from_term(term), environment), term.body_type)
                     )
         elif isinstance(term, LetIn):
             return LetIn(
                     term.arg_name,
-                    generate(context, term.arg_type),
-                    generate(context, term.arg_body),
-                    generate(context + [term], term.body_type)
+                    generate(environment, term.arg_type),
+                    generate(environment, term.arg_body),
+                    generate(ContextEnvironment(Binding.from_term(term), environment), term.body_type)
                     )
         elif isinstance(term, (Sort, Const, Construct, Ind)):
             return term
         elif isinstance(term, Cast):
             return Cast(
-                    generate(context, term.body),
+                    generate(environment, term.body),
                     term.cast_kind,
-                    generate(context, term.guaranteed_type)
+                    generate(environment, term.guaranteed_type)
                     )
         elif isinstance(term, Rel):
-            binding = term.get_binding(context)
-            if binding in outside_context:
+            binding = environment.rel(term.index)
+
+            try:
+                outside_context, outside_index = outside_context_env.lookup_by_binding(binding)
                 # free variable here
-                rel_index = outside_context.index(binding)
                 return Meta(
-                        rel_index,
-                        generate(outside_context[:rel_index], binding.arg_type)
+                        outside_index,
+                        generate(outside_context.inherited_environment, binding.type)
                         )
-            else:
+            except EnvironmentOverflow:
                 return term
+
         elif isinstance(term, Apply):
             return Apply(
-                    generate(context, term.func),
-                    *[ generate(context, arg) for arg in term.args ]
+                    generate(environment, term.func),
+                    *[ generate(environment, arg) for arg in term.args ]
                     )
         else:
             raise Exception("cannot generate pattern from %s" % term)
 
-    return generate(outside_context, term)
+    return generate(outside_context_env, term)

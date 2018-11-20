@@ -10,10 +10,12 @@ def exec_or_evar(*args):
         eval_result = eval(*args)
         if eval_result is not None:
             print(eval_result)
-    except KeyboardInterrupt:
-        print('command interrupted by user.')
+
+        return True
     except SyntaxError:
-        exec(*args)
+        pass
+
+    exec(*args)
 
 
 class Top:
@@ -56,9 +58,9 @@ class Top:
     def run(self, cmd):
         cmd = DSL.preprocess(cmd)
         if self.debug_mode:
-            exec_or_evar(cmd, self.namespace, self.debug_namespace)
+            return exec_or_evar(cmd, self.namespace, self.debug_namespace)
         else:
-            exec_or_evar(cmd, self.namespace)
+            return exec_or_evar(cmd, self.namespace)
 
     def query(self, name):
         task = None
@@ -85,7 +87,11 @@ class Top:
 
     def load(self, filename):
         with open(filename) as rcfile:
-            self.run(rcfile.read())
+            if self.run(rcfile.read()) is False:
+                self.print('failed loading file %s.' % filename)
+                return False
+
+        return True
 
     # =========================================================================
 
@@ -158,4 +164,18 @@ class Top:
             try:
                 self.run(command)
             except Exception as err:
-                traceback.print_exc()
+                # traceback.print_exc()
+                # when an exception is triggered by a input command, there is not importance to traceback
+                # the full stack
+                print(err)
+
+    # ================================= default top ===========================
+    __default_top = None
+
+    @classmethod
+    def default(cls):
+        return cls.__default_top
+
+    @classmethod
+    def set_default(cls, top):
+        cls.__default_top = top
