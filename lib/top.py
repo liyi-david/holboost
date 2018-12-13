@@ -4,18 +4,6 @@ from kernel.dsl import DSL
 import traceback
 
 
-def run_tests():
-    import unittest
-
-    suite = unittest.TestSuite()
-    cases = unittest.defaultTestLoader.discover("test", 'test*.py')
-
-    for case in cases:
-        suite.addTests(case)
-
-    unittest.TextTestRunner().run(suite)
-
-
 def exec_or_evar(*args):
     try:
         eval_result = eval(*args)
@@ -46,7 +34,6 @@ class Top:
         self.namespace['cache'] = {}
         self.namespace['debug'] = self.activate_debug
         self.namespace['top'] = self
-        self.namespace['test'] = run_tests
 
         self.debug_modules = set()
 

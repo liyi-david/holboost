@@ -13,13 +13,9 @@ class Macro(Term, metaclass=abc.ABCMeta):
     class MacroAbuse(Exception):
         pass
 
-    @classmethod
-    @abc.abstractmethod
-    def name(cls):
-        """
-        return the name of the interpretation
-        """
-        pass
+    def macro_name(self):
+        assert type(self) is not Macro, "cannot evaluate the name of Macro itself"
+        return str(type(self)).split("'")[1]
 
     def type(self, environment, context=[]) -> 'Term':
         return self.unfold().type(environment, context)
@@ -42,6 +38,13 @@ class Macro(Term, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def unfold(self) -> 'Term':
         pass
+
+    def to_json(self):
+        return {
+                "node": "macro",
+                "macro_name": self.macro_name(),
+                "macro_repr": repr(self)
+                }
 
     @classmethod
     def fold(cls, term):

@@ -114,5 +114,10 @@ class NatValue(Macro):
                     Construct("Coq.Init.Datatypes.nat", 0, 1), NatValue(self.val - 1)
                     )
 
+    def to_json(self):
+        json = Macro.to_json(self)
+        json.update({ "value": self.val })
+        return json
+
 
 nat = NatType()
