@@ -13,9 +13,10 @@ class Macro(Term, metaclass=abc.ABCMeta):
     class MacroAbuse(Exception):
         pass
 
-    def macro_name(self):
-        assert type(self) is not Macro, "cannot evaluate the name of Macro itself"
-        return str(type(self)).split("'")[1]
+    @classmethod
+    def macro_name(cls):
+        assert type(cls) is not Macro, "cannot evaluate the name of Macro itself"
+        return str(cls).split("'")[1]
 
     def type(self, environment, context=[]) -> 'Term':
         return self.unfold().type(environment, context)
@@ -46,43 +47,58 @@ class Macro(Term, metaclass=abc.ABCMeta):
                 "macro_repr": repr(self)
                 }
 
-    @classmethod
-    def fold(cls, term):
-        """
-        fold a term as macro, will be invoked automatically when the condition returned by
-        auto_fold_on is satisfied.
-
-        neither or both the two functions should be overwritten.
-        """
-        raise cls.MacroAbuse("unimplemented fold function")
-
-    @classmethod
-    def auto_fold_on(cls):
-        """
-        returns:
-            - a lambda boolean function to check whether a term is going to be fold automatically
-            - None indicating this macro does not support auto-folding feature
-        """
-        return None
-
-
     """
     interpretation registeration mechanism
 
     this allows plugins to register their interpretations
     """
+    class MacroFoldFailure(Exception):
+        """
+        any foldable Macro should raise this exception when the folding process fails
+        """
+        pass
 
     __registered_macros = {}
-    __autofold_filters = {}
 
     @classmethod
     def register(cls):
-        if cls.name() not in cls.__registered_macros:
-            cls.__registered_macros[cls.name()] = cls
-            if cls.auto_fold_on() is not None:
-                cls.__autofold_filters[cls] = cls.auto_fold_on()
+        if cls.macro_name() not in cls.__registered_macros:
+            cls.__registered_macros[cls.macro_name()] = cls
         else:
             raise Exception("interpretation %s already exist!" % cls.name())
+
+    @classmethod
+    def fold(cls, term):
+        """
+        fold a term as macro.
+        """
+        if cls is not Macro:
+            raise cls.MacroFoldFailure("the macro %s does not support fold feature!" % cls.macro_name())
+
+        # fold from the root
+        for _, macro in cls.__registered_macros.items():
+            try:
+                folden = macro.fold(term)
+                if folden is not None:
+                    return folden
+            except cls.MacroFoldFailure as err:
+                pass
+
+        # fold the subterms
+        try:
+            folden_subterms = []
+            for t in term.subterms():
+                folden_subterms.append(t.fold())
+                if folden_subterms[-1] is None:
+                    return term
+
+            return term.subterms_subst(folden_subterms)
+        except cls.MacroFoldFailure:
+            pass
+
+        return term
+
+
 
     # ============================ operators ==================================
 

@@ -21,8 +21,11 @@ def load_plugins(top, plugin_dir="plugins"):
                             continue
 
                         top.namespace[item] = getattr(mod, item)
-                        if isinstance(top.namespace[item], Macro):
-                            top.namespace[item].register()
+
+                        # FIXME: make a decision: who is responsible to register the Macros?
+
+                        # if isinstance(top.namespace[item], Macro):
+                            # top.namespace[item].register()
 
                     loaded.append(plugin)
                 except Exception as err:

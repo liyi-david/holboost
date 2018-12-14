@@ -25,6 +25,13 @@ class NatType(Macro):
     def render(self, environment=None, context=[], debug=False):
         return "nat"
 
+    @classmethod
+    def fold(cls, term):
+        if isinstance(term, Ind) and term.mutind_name == 'Coq.Init.Datatypes.nat' and term.ind_index == 0:
+            return nat
+
+        return None
+
     def unfold(self):
         return Ind("Coq.Init.Datatypes.nat", 0)
 
@@ -106,6 +113,28 @@ class NatValue(Macro):
     def render(self, environment=None, context=[], debug=False):
         return str(self.val)
 
+    @classmethod
+    def fold(self, term):
+
+        isnat = lambda t: isinstance(t, Construct) and t.mutind_name == 'Coq.Init.Datatypes.nat' and t.ind_index == 0
+        is0 = lambda t: isnat(t) and t.constructor_index == 0
+
+        if is0(term):
+            return nat(0)
+        elif isinstance(term, Apply) and isnat(term.func):
+            v = 0
+            while isinstance(term, Apply):
+                term, v = term.args[0], v + 1
+
+            if is0(term):
+                return nat(v)
+            elif isinstance(term, NatValue):
+                return nat(v + term.val)
+            else:
+                return None
+        else:
+            return None
+
     def unfold(self):
         if self.val == 0:
             return Construct("Coq.Init.Datatypes.nat", 0, 0)
@@ -121,3 +150,5 @@ class NatValue(Macro):
 
 
 nat = NatType()
+NatValue.register()
+NatType.register()

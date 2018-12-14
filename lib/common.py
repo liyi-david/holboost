@@ -20,3 +20,20 @@ def one_of_them_is(objects, classes):
             return True
 
     return False
+
+def code_indent(code, level, indent='  ', forceEndl=False):
+    """
+    this function add indents to each line in a code block. the added indent is `indent * level`.
+    if level < 0, it reduce indents from each line
+    """
+
+    lines = code.split('\n')
+    if level > 0:
+        result = "\n".join(map(lambda line: indent * level + line, lines))
+    elif level < 0:
+        raise Exception('unimplemented')
+
+    if forceEndl and result[-1] != "\n":
+        result += "\n"
+
+    return result

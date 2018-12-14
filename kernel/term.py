@@ -154,6 +154,10 @@ class Term(abc.ABC):
                     # list(map(lambda t: t.unfold(environment, context), self.subterms()))
                     # )
 
+    def fold(self):
+        from kernel.macro import Macro
+        return Macro.fold(self)
+
     def get_comment(self):
         if self.comment is None or self.comment == "":
             return ""
@@ -916,6 +920,10 @@ class Ind(Term):
             return mutind.inds[self.ind_index].name + univ_inst_str
         else:
             return '_%s_%d_' % (self.mutind_name, self.ind_index) + univ_inst_str
+
+    def __getitem__(self, index):
+        assert isinstance(index, int) and index >= 0, "index must be an non-negative integer"
+        return Construct(self.mutind_name, self.ind_index, index)
 
     def __eq__(self, value):
         return isinstance(value, Ind) and \

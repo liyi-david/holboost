@@ -1,6 +1,8 @@
 from kernel.environment import Environment
 from kernel.dsl import DSL
 
+from os.path import isfile
+
 import traceback
 
 
@@ -29,7 +31,7 @@ class Top:
         # initalization of the namespace
         self.namespace['list'] = (lambda: print(self.supported_methods))
         self.namespace['log'] = (lambda: print("\n".join(self.message_pool[-5:])))
-        self.namespace['load'] = (lambda f: self.load(f))
+        self.namespace['load'] = self.load
         self.namespace['query'] = (lambda s: self.query(s))
         self.namespace['cache'] = {}
         self.namespace['debug'] = self.activate_debug
@@ -84,13 +86,54 @@ class Top:
             self.print(item)
 
 
-    def load(self, filename):
-        with open(filename) as rcfile:
-            if self.run(rcfile.read()) is False:
-                self.print('failed loading file %s.' % filename)
-                return False
+    def load(self, filename, forcePython=False):
+        """
+        The function is designed to load either python scripts or coq scripts. When the extname
+        of `filename` is python, it runs the python script in the local environment, otherwise if
+        the extname is '.v' it runs the file in Coq.
 
-        return True
+        @param forcePython: if set to True, the file is always executed as python script
+        """
+
+        assert isfile(filename), "file %s does not exist!" % filename
+        with open(filename) as script:
+            if filename.strip().endswith(".py") or forcePython:
+                if self.run(script.read()) is False:
+                    self.print('failed loading file %s.' % filename)
+            elif filename.strip().endswith(".v"):
+                from shutil import which
+                import subprocess
+
+                coqtop = which('coqtop')
+                assert coqtop is not None, "no coqtop available under $PATH"
+
+                # start coq
+                p = subprocess.Popen(
+                        [coqtop],
+                        stdin = subprocess.PIPE,
+                        stdout = subprocess.PIPE,
+                        stderr = subprocess.PIPE
+                        )
+
+                # feed the input
+                p.stdin.write(script.read().encode())
+                p.stdin.close()
+
+                p.wait(timeout=10)
+
+                # obtain the output
+                out = p.stdout.read().decode(p.encoding or 'utf8').replace("Coq <", "")
+                err = p.stderr.read().decode(p.encoding or 'utf8').replace("Coq <", "")
+
+                if err.strip() != "":
+                    self.print('error happened when executing the Coq script.')
+                    self.print(err)
+                else:
+                    self.print('execution finished successfully.')
+
+            else:
+                self.print('unrecognized file type!')
+
 
     # =========================================================================
 
@@ -128,7 +171,7 @@ class Top:
         # load rc file
         try:
             print("Loading configurations from .holboostrc ...")
-            self.load(".holboostrc")
+            self.load(".holboostrc", forcePython=True)
         except FileNotFoundError:
             pass
 
@@ -166,7 +209,7 @@ class Top:
                 # traceback.print_exc()
                 # when an exception is triggered by a input command, there is not importance to traceback
                 # the full stack
-                print(err)
+                print('\x1b[1;37;41m' + type(err).__name__ + '\x1b[0m', err)
 
     # ================================= default top ===========================
     __default_top = None

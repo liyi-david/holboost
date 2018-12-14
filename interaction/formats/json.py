@@ -238,7 +238,7 @@ class JsonFormat(Format):
                         "args": list(map(lambda arg: convert(arg), term.args))
                         }
             else:
-                raise JsonConvertError('cannot convert term typed %s' % term['type'])
+                return term.to_json()
 
         return convert(term)
 
