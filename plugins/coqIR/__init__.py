@@ -1,5 +1,5 @@
 from kernel.macro import Macro
-from kernel.term import Lambda, Var
+from kernel.term import Lambda, Var, Const, Apply
 
 
 class Statement(Macro):
@@ -11,12 +11,43 @@ class Statement(Macro):
         raise Exception('unimplemented')
 
 
+class Labelled(Macro):
+    ut_stmt_label = "src.type.stmt_label"
+
+    @classmethod
+    def fold(cls, t):
+        if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_stmt_label:
+            return t.args[2].fold()
+
+
+class PlaceHolder(Statement):
+
+    ut_placeholder = "src.type.WP_PLACEHOLDER"
+
+    def __init__(self):
+        # FIXME name
+        self.name = ""
+
+    def render(self, environment=None, debug=False):
+        return "{ %s }" % self.name
+
+    @classmethod
+    def fold(cls, t):
+        if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_placeholder:
+            return cls()
+
+
 class Assign(Statement):
 
     def __init__(self, name, expr, typ=None):
         self.name = name
         self.expr = expr
-        self.typ = typ if typ is not None else expr.type()
+
+        try:
+            self.typ = typ if typ is not None else expr.type()
+        except:
+            # FIXME
+            self.typ = None
 
     def render(self, environment=None, debug=False):
         if self.name is not None:
@@ -40,6 +71,8 @@ class Assign(Statement):
 
 class Return(Statement):
 
+    ut_return = "src.type.ret"
+
     def __init__(self, val):
         self.val = val
 
@@ -48,6 +81,11 @@ class Return(Statement):
 
     def unfold(self):
         pass
+
+    @classmethod
+    def fold(cls, t):
+        if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_return:
+            return Return(t.args[4].fold())
 
     def to_json(self):
         json = Statement.to_json(self)
@@ -60,6 +98,8 @@ class Return(Statement):
 
 class Sequential(Statement):
 
+    ut_bind = "src.type.bind"
+
     def __init__(self, stmts=[]):
         self.stmts = stmts
 
@@ -71,6 +111,21 @@ class Sequential(Statement):
     def unfold(self):
         pass
 
+    @classmethod
+    def fold(cls, t):
+        stmt = []
+        while isinstance(t, Apply) and \
+                isinstance(t.func, Const) and t.func.name == cls.ut_bind and \
+                isinstance(t.args[4], Lambda):
+                    stmt.append(Assign(t.args[4].arg_name, t.args[3].fold()))
+                    t = t.args[4].body
+        else:
+            if len(stmt) == 0:
+                return None
+            else:
+                stmt.append(t.fold())
+
+
     def to_json(self):
         json = Statement.to_json(self)
         json.update({
@@ -81,3 +136,7 @@ class Sequential(Statement):
 
 
 print('coqIR, ', end='')
+Sequential.register()
+Labelled.register()
+Return.register()
+PlaceHolder.register()

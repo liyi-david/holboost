@@ -238,7 +238,7 @@ class JsonFormat(Format):
                         "args": list(map(lambda arg: convert(arg), term.args))
                         }
             else:
-                return term.to_json()
+                raise JsonConvertError("%s does not support json-exporting!" % str(type(term)))
 
         return convert(term)
 

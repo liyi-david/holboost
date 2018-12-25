@@ -21,11 +21,3 @@ else:
     Environment.set_default(env)
 
 debug('rewrite', )
-
-t = env['O'].term()
-S = env['S'].term()
-for _ in range(10000):
-    t = Apply(S, t)
-
-# bug here!
-# print(t)

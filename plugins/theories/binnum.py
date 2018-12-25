@@ -86,6 +86,9 @@ class BinaryNumberComparison(Macro):
 
 class BinaryNumberValue(Macro):
 
+    coq_Z = 'Coq.Numbers.BinNums.Z'
+    coq_positive = 'Coq.Numbers.BinNums.positive'
+
     def __init__(self, value):
         self.value = value
 
@@ -104,22 +107,46 @@ class BinaryNumberValue(Macro):
 
     def unfold(self):
         if self.value == 0:
-            return Construct('Coq.Numbers.BinNums.Z', 0, 0)
+            return Construct(self.coq_Z, 0, 0)
         else:
-            constructor = Construct('Coq.Numbers.BinNums.Z', 0, 1 if self.value > 0 else 2)
+            constructor = Construct(self.coq_Z,  0, 1 if self.value > 0 else 2)
             v = abs(self.value)
             bs = bin(v)[3:]
 
             # since self.value != 0, at least the highest bit is 1
-            result = Construct('Coq.Numbers.BinNums.positive', 0, 2)
+            result = Construct(self.coq_positive, 0, 2)
             for bit in bs:
                 result = Apply(
-                        Construct('Coq.Numbers.BinNums.positive', 0, 0 if bit == "1" else 1),
+                        Construct(self.coq_positive, 0, 0 if bit == "1" else 1),
                         result
                         )
 
             result = Apply(constructor, result)
             return result
 
+    @classmethod
+    def fold(cls, t):
+        if isinstance(t, Apply) and isinstance(t.func, Construct) and t.func.mutind_name == cls.coq_Z:
+            if t.func.constructor_index == 0:
+                return integer(0)
+            else:
+                sgn = 1 if t.func.constructor_index == 1 else -1
+
+            pos = t.args[0]
+            bits = ''
+            while isinstance(pos, (Apply, Construct)):
+                if isinstance(pos, Construct) and pos.mutind_name == cls.coq_positive and pos.constructor_index == 2:
+                    bits = '1' + bits
+                    break
+                elif isinstance(pos, Apply) and isinstance(pos.func, Construct) and pos.func.mutind_name == cls.coq_positive:
+                    bits = ('1' if pos.func.constructor_index == 0 else '0') + bits
+                    pos = pos.args[0]
+                else:
+                    raise Macro.MacroFoldFailure()
+
+            return integer(sgn * int(bits, 2))
+
+
 
 integer = BinaryNumberType()
+BinaryNumberValue.register()

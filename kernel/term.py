@@ -716,7 +716,7 @@ class Prod(ContextTerm):
         else:
             # forall form
             # combine multiple foralls if possible
-            return "forall {0}: {1}, {2}".format(
+            return "∀ ({0}: {1}), {2}".format(
                     self.arg_name,
                     self.arg_type.render(environment, debug),
                     self.body.render(ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment), debug)
@@ -791,7 +791,7 @@ class Lambda(ContextTerm):
         return Prod(None, self.arg_type, body_typ), set.union(arg_sideff, body_sideff)
 
     def render(self, environment=None, debug=False) -> 'str':
-        return "fun ({0}: {1}) => {2}".format(
+        return "λ ({0}: {1}). {2}".format(
                 self.arg_name if self.arg_name is not None else "_",
                 self.arg_type.render(environment, debug),
                 self.body.render(ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment), debug)
