@@ -21,3 +21,11 @@ else:
     Environment.set_default(env)
 
 debug('rewrite', )
+
+p = Sequential(
+        Assign('x', nat(1)),
+        Ite(
+            Rel(0),
+            Return(Rel(0))
+        )
+    )

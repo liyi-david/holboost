@@ -25,9 +25,8 @@ class PlaceHolder(Statement):
 
     ut_placeholder = "src.type.WP_PLACEHOLDER"
 
-    def __init__(self):
-        # FIXME name
-        self.name = ""
+    def __init__(self, name=""):
+        self.name = name
 
     def render(self, environment=None, debug=False):
         return "{ %s }" % self.name
@@ -35,7 +34,7 @@ class PlaceHolder(Statement):
     @classmethod
     def fold(cls, t):
         if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_placeholder:
-            return cls()
+            return cls(t.args[3].fold())
 
 
 class Assign(Statement):
@@ -131,7 +130,7 @@ class Sequential(Statement):
             else:
                 stmts.append(t.fold())
 
-        return Sequential(stmts)
+        return Sequential(*stmts)
 
     def to_json(self):
         json = Statement.to_json(self)

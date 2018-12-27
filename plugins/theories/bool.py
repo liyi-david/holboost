@@ -43,3 +43,6 @@ class Ite(Macro):
     def unfold(self):
         # FIXME
         pass
+
+
+Ite.register()
