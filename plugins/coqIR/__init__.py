@@ -1,5 +1,6 @@
 from kernel.macro import Macro
-from kernel.term import Lambda, Var, Const, Apply
+from kernel.environment import ContextEnvironment
+from kernel.term import Lambda, Var, Const, Apply, Binding
 
 
 class Statement(Macro):
@@ -100,31 +101,37 @@ class Sequential(Statement):
 
     ut_bind = "src.type.bind"
 
-    def __init__(self, stmts=[]):
+    def __init__(self, *stmts):
         self.stmts = stmts
 
     def render(self, environment=None, debug=False):
-        return "\n".join(
-                map(lambda stmt: stmt.render(environment, debug), self.stmts)
-                )
+        str_stmts = []
+        env = environment
+        for stmt in self.stmts:
+            str_stmts.append(stmt.render(env, debug))
+            if isinstance(stmt, Assign):
+                env = ContextEnvironment(Binding(stmt.name, stmt.expr), env)
+
+        return "\n".join(str_stmts)
 
     def unfold(self):
         pass
 
     @classmethod
     def fold(cls, t):
-        stmt = []
+        stmts = []
         while isinstance(t, Apply) and \
                 isinstance(t.func, Const) and t.func.name == cls.ut_bind and \
                 isinstance(t.args[4], Lambda):
-                    stmt.append(Assign(t.args[4].arg_name, t.args[3].fold()))
+                    stmts.append(Assign(t.args[4].arg_name, t.args[3].fold()))
                     t = t.args[4].body
         else:
-            if len(stmt) == 0:
+            if len(stmts) == 0:
                 return None
             else:
-                stmt.append(t.fold())
+                stmts.append(t.fold())
 
+        return Sequential(stmts)
 
     def to_json(self):
         json = Statement.to_json(self)

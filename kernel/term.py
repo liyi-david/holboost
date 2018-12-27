@@ -12,7 +12,7 @@ class TypingUnclosedError(Exception):
     pass
 
 class Binding:
-    def __init__(self, name, value, type):
+    def __init__(self, name, value=None, type=None):
         self.name = name
         self.value = value
         self.type = type
