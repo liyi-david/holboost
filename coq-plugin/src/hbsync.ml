@@ -13,6 +13,9 @@ let is_builtin (name:string) : bool =
     if result == 0 then true
     else false
 
+let is_cached (name:string) : bool =
+    false
+
 let write_to_temp_file (content:string) : string =
     let filename = Filename.temp_file "coq_holboost" ".task" in
     let chan = open_out filename in
@@ -48,7 +51,12 @@ let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (
             End_of_file ->
                 close_in ic
     end;
-    from_string !all_input
+    let json_resp = from_string !all_input in begin
+        let open Yojson.Basic.Util in
+        builtin_cached := (json_resp |> member "builtin_cached" |> to_bool)
+    end;
+    json_resp
+
 
 let try_connect (_server: string) (_port: int) : unit =
     let conn_msg = `Assoc [
@@ -95,11 +103,4 @@ let init ?(server: string option = None) ?(port: int option = None) (_: unit): u
 
 let post_json ?(_server: string option = None) ?(_port: int option = None) (j:json) : json =
     init();
-    let open Yojson.Basic.Util in
-    let json_resp = raw_post_json ~_server:_server ~_port:_port j in begin
-        if not (json_resp |> member "builtin_cached" |> to_bool) then
-            builtin_cached := false
-        else
-            builtin_cached := true
-    end;
-    json_resp
+    raw_post_json ~_server:_server ~_port:_port j

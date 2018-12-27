@@ -16,6 +16,10 @@ make sure to read these notes before starting using function interfaces provided
 # this is only used as a constant
 lambda_type = type(lambda f: f)
 
+def prefix_of(ident):
+    return ".".join(ident.split(".")[:-1])
+
+
 
 class EnvironmentOverflow(Exception):
     pass
@@ -175,6 +179,11 @@ class NamedEnvironment(Environment):
         self.__mutinds = mutinds
         self.__variables = variables
 
+        # prefixes contain only the prefixes of mutinds and constants
+        # they are basically used to figure out whether a variable is
+        # cached or not
+        self.__prefixes = set()
+
     def get_builtins(self):
         """
         only named environments carries builtins
@@ -196,8 +205,11 @@ class NamedEnvironment(Environment):
         the '+=' operator only changes mut-inductives and definition
         """
         assert isinstance(env, NamedEnvironment)
-        self.__constants.update(env.constants())
-        self.__mutinds.update(env.mutinds())
+        for c in env.constants().values():
+            self.add_constant(c)
+
+        for m in env.mutinds().values():
+            self.add_mutind(m)
 
         return self
 
@@ -230,17 +242,19 @@ class NamedEnvironment(Environment):
         """
         self.__variables[var.name] = var
 
-    def add_constant(self, const):
+    def add_constant(self, const: 'Constant'):
         """
         be aware of knowing what you are doing!
         """
         self.__constants[const.name] = const
+        # self.__prefixes.add(prefix_of(const.name))
 
-    def add_mutind(self, mutind):
+    def add_mutind(self, mutind: 'MutInductive'):
         """
         be aware of knowing what you are doing!
         """
         self.__mutinds[mutind.name] = mutind
+        # self.__prefixes.add(prefix_of(mutind.name))
 
     def constants(self):
         result = self.__constants.copy()
