@@ -24,4 +24,3 @@ Proof.
   intro H1.
   apply H1.
 Qed.
-  

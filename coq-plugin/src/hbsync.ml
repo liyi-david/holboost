@@ -53,12 +53,7 @@ let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (
     end;
     let json_resp = from_string !all_input in begin
         let open Yojson.Basic.Util in
-<<<<<<< HEAD
         builtin_cached := (json_resp |> member "builtin_cached" |> to_bool);
-        Feedback.msg_info (Pp.str "cache activated.")
-=======
-        builtin_cached := (json_resp |> member "builtin_cached" |> to_bool)
->>>>>>> d78e8c7b591733d57784211e840e1300eade70af
     end;
     json_resp
 

@@ -41,27 +41,17 @@ def CoqTaskHandlerFactory(top : 'Top'):
 
                     result = task.run(top)
 
-<<<<<<< HEAD
                     if task.client not in top.namespace['cache']:
                         builtins = task.get_builtins()
                         if len(builtins.constants().values()) + len(builtins.mutinds().values()) > 0:
                             top.namespace['cache'][task.client] = builtins
-=======
-                    builtins = task.get_builtins()
-                    if parsed_data['client'] not in top.namespace['cache']:
-                        top.namespace['cache'][parsed_data['client']] = builtins
->>>>>>> d78e8c7b591733d57784211e840e1300eade70af
 
                     reply = {
                             "error"    : False,
                             "finished" : True,
                             "msg"      : "",
                             "feedback" : result,
-<<<<<<< HEAD
                             "builtin_cached": (task.client in top.namespace['cache']),
-=======
-                            "builtin_cached": parsed_data['client'] in top.namespace['cache'],
->>>>>>> d78e8c7b591733d57784211e840e1300eade70af
                             }
 
                     top.debug("server", "response", reply)

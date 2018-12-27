@@ -67,6 +67,7 @@ TACTIC EXTEND boom
 ]
 END;;
 
+
 VERNAC COMMAND EXTEND Boom_debug CLASSIFIED AS QUERY
 | [ "Boom" "Debug" "On" ] -> [
     let open Debug in
@@ -198,4 +199,10 @@ VERNAC COMMAND EXTEND Send CLASSIFIED AS QUERY
 END;;
 *)
 
-let _ = Hbsync.init();;
+
+let _ =
+    try
+        Hbsync.init()
+    with
+        _ -> Feedback.msg_error Pp.(str "Cannot initialize holboost connection.")
+;;
