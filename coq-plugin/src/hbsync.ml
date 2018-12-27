@@ -13,6 +13,9 @@ let is_builtin (name:string) : bool =
     if result == 0 then true
     else false
 
+let is_cached (name:string) : bool =
+    false
+
 let write_to_temp_file (content:string) : string =
     let filename = Filename.temp_file "coq_holboost" ".task" in
     let chan = open_out filename in
@@ -50,8 +53,12 @@ let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (
     end;
     let json_resp = from_string !all_input in begin
         let open Yojson.Basic.Util in
+<<<<<<< HEAD
         builtin_cached := (json_resp |> member "builtin_cached" |> to_bool);
         Feedback.msg_info (Pp.str "cache activated.")
+=======
+        builtin_cached := (json_resp |> member "builtin_cached" |> to_bool)
+>>>>>>> d78e8c7b591733d57784211e840e1300eade70af
     end;
     json_resp
 
