@@ -18,11 +18,11 @@ class Task(NamedEnvironment):
             self.command.task = self
 
     def __str__(self):
-        return "The task has %d constants, %d mut-inductives and %d context variables\n" % (
+        return "The task has %d constants, %d mut-inductives and %d context variables." % (
                 len(self.constants()),
                 len(self.mutinds()),
                 len(self.variables())
-                ) + "[] |- %s" % ("None" if self.goal is None else self.goal.render(self))
+                )
 
     @staticmethod
     def get_current():

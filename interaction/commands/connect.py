@@ -15,4 +15,4 @@ class ConnectCommand(Command):
 
         # TODO session is important for further parallel optimization
         # here 0 is only a placeholder
-        return {"session": 0}
+        return { "session": 0 }

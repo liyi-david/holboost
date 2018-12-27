@@ -197,3 +197,5 @@ VERNAC COMMAND EXTEND Send CLASSIFIED AS QUERY
     ]
 END;;
 *)
+
+let _ = Hbsync.init();;

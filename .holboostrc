@@ -7,7 +7,6 @@ from kernel.dsl import DSL
 from plugins import load_plugins
 from interaction.formats.json import JsonFormat
 
-# configure
 load_plugins(top)
 
 # set default environment
@@ -15,17 +14,9 @@ if "coq" in cache:
     env = NamedEnvironment()
     env.inherited_environment = cache['coq']
     Environment.set_default(env)
-    # del cache['coq']
 else:
     env = NamedEnvironment()
     Environment.set_default(env)
 
 debug('rewrite', )
 
-p = Sequential(
-        Assign('x', nat(1)),
-        Ite(
-            Rel(0),
-            Return(Rel(0))
-        )
-    )

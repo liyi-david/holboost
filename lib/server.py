@@ -1,6 +1,8 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from interaction.formats.json import JsonFormat, JsonConvertError
 
+from kernel.environment import NamedEnvironment
+
 import threading
 import json
 
@@ -39,20 +41,20 @@ def CoqTaskHandlerFactory(top : 'Top'):
 
                     result = task.run(top)
 
-                    if parsed_data['client'] not in top.namespace['cache']:
+                    if task.client not in top.namespace['cache']:
                         builtins = task.get_builtins()
-                        if len(builtins.constants()) + len(builtins.mutinds()) > 0:
-                            top.namespace['cache'][parsed_data['client']] = builtins
-
+                        if len(builtins.constants().values()) + len(builtins.mutinds().values()) > 0:
+                            top.namespace['cache'][task.client] = builtins
 
                     reply = {
                             "error"    : False,
                             "finished" : True,
                             "msg"      : "",
-                            # FIXME in certain cases it may not return a term?
                             "feedback" : result,
-                            "builtin_cached": parsed_data['client'] in top.namespace['cache']
+                            "builtin_cached": (task.client in top.namespace['cache']),
                             }
+
+                    top.debug("server", "response", reply)
 
                 except json.JSONDecodeError as err:
                     top.print(data[err.pos - 10:err.pos + 10])

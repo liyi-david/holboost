@@ -1,6 +1,5 @@
 from kernel.environment import Environment
 from kernel.dsl import DSL
-
 from os.path import isfile
 
 import traceback
@@ -36,6 +35,7 @@ class Top:
         self.namespace['cache'] = {}
         self.namespace['debug'] = self.activate_debug
         self.namespace['top'] = self
+        self.namespace['runcoq'] = self.runcoq
 
         self.debug_modules = set()
 
@@ -48,13 +48,13 @@ class Top:
         self.message_pool.append(message)
 
     def print(self, *args):
-        print("\rCommand MSG ", *args)
-        print("Holboost >>> ", end="", flush=True)
+        print("\r\x1b[96mCommand MSG \x1b[0m", *args)
+        print("\x1b[32mHolboost\x1b[0m >>> ", end="", flush=True)
 
     def debug(self, module, *args):
         if module in self.debug_modules:
-            print("\rDebug   MSG ", *args)
-            print("Holboost >>> ", end="", flush=True)
+            print("\r\x1b[43mDebug   MSG \x1b[0m", *args)
+            print("\x1b[32mHolboost\x1b[0m >>> ", end="", flush=True)
 
     def run(self, cmd):
         cmd = DSL.preprocess(cmd)
@@ -95,44 +95,46 @@ class Top:
         @param forcePython: if set to True, the file is always executed as python script
         """
 
-        assert isfile(filename), "file %s does not exist!" % filename
         with open(filename) as script:
             if filename.strip().endswith(".py") or forcePython:
                 if self.run(script.read()) is False:
                     self.print('failed loading file %s.' % filename)
             elif filename.strip().endswith(".v"):
-                from shutil import which
-                import subprocess
-
-                coqtop = which('coqtop')
-                assert coqtop is not None, "no coqtop available under $PATH"
-
-                # start coq
-                p = subprocess.Popen(
-                        [coqtop],
-                        stdin = subprocess.PIPE,
-                        stdout = subprocess.PIPE,
-                        stderr = subprocess.PIPE
-                        )
-
-                # feed the input
-                p.stdin.write(script.read().encode())
-                p.stdin.close()
-
-                p.wait(timeout=10)
-
-                # obtain the output
-                out = p.stdout.read().decode(p.encoding or 'utf8').replace("Coq <", "")
-                err = p.stderr.read().decode(p.encoding or 'utf8').replace("Coq <", "")
-
-                if err.strip() != "":
-                    self.print('error happened when executing the Coq script.')
-                    self.print(err)
-                else:
-                    self.print('execution finished successfully.')
-
+                self.runcoq(script.read())
             else:
                 self.print('unrecognized file type!')
+
+
+    def runcoq(self, coqcode):
+        from shutil import which
+        import subprocess
+
+        coqtop = which('coqtop')
+        assert coqtop is not None, "no coqtop available under $PATH"
+
+        # start coq
+        p = subprocess.Popen(
+                [coqtop],
+                stdin = subprocess.PIPE,
+                stdout = subprocess.PIPE,
+                stderr = subprocess.PIPE
+                )
+
+        # feed the input
+        p.stdin.write(coqcode.encode())
+        p.stdin.close()
+
+        p.wait(timeout=10)
+
+        # obtain the output
+        out = p.stdout.read().decode(p.encoding or 'utf8').replace("Coq <", "")
+        err = p.stderr.read().decode(p.encoding or 'utf8').replace("Coq <", "")
+
+        if err.strip() != "":
+            self.print('error happened when executing the Coq script.')
+            self.print(err.strip())
+        else:
+            self.print('execution finished successfully.')
 
 
     # =========================================================================
@@ -170,8 +172,10 @@ class Top:
 
         # load rc file
         try:
-            print("Loading configurations from .holboostrc ...")
             self.load(".holboostrc", forcePython=True)
+            self.print("Loading configurations from .holboostrc.")
+            self.load(".holboostrc.local", forcePython=True)
+            self.print("Loading configurations from .holboostrc.local.")
         except FileNotFoundError:
             pass
 
@@ -186,7 +190,7 @@ class Top:
         while True:
             if multiline_command != "":
                 # working in multi-line mode
-                command = input("\rHolboost ... ")
+                command = input("\r\x1b[1mHolboost\x1b[0m >>> ")
                 if command == "":
                     # run them
                     command = multiline_command
@@ -195,7 +199,7 @@ class Top:
                     multiline_command += command + "\n"
                     command = ""
             else:
-                command = input("\rHolboost >>> ")
+                command = input("\r\x1b[32mHolboost\x1b[0m >>> ")
 
                 # jump to multiline-mode
                 if len(command) > 0 and (command.strip()[-1] == ':' or DSL.unclosed_dsl(command)):
