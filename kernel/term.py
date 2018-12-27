@@ -154,9 +154,12 @@ class Term(abc.ABC):
                     # list(map(lambda t: t.unfold(environment, context), self.subterms()))
                     # )
 
-    def fold(self):
+    def autofold(self):
         from kernel.macro import Macro
-        return Macro.fold(self)
+        if isinstance(self, Macro):
+            return self
+        else:
+            return Macro.fold(self)
 
     def get_comment(self):
         if self.comment is None or self.comment == "":

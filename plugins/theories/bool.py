@@ -33,9 +33,9 @@ class Ite(Macro):
     def fold(cls, term):
         if isinstance(term, Case) and term.term_type == bool:
             return Ite(
-                    term.term_matched.fold(),
-                    term.cases[0].fold(),
-                    term.cases[1].fold()
+                    term.term_matched.autofold(),
+                    term.cases[0].autofold(),
+                    term.cases[1].autofold()
                     )
 
         return None

@@ -18,7 +18,7 @@ class Labelled(Macro):
     @classmethod
     def fold(cls, t):
         if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_stmt_label:
-            return t.args[2].fold()
+            return t.args[2].autofold()
 
 
 class PlaceHolder(Statement):
@@ -34,7 +34,7 @@ class PlaceHolder(Statement):
     @classmethod
     def fold(cls, t):
         if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_placeholder:
-            return cls(t.args[3].fold())
+            return cls(t.args[3].autofold())
 
 
 class Assign(Statement):
@@ -85,7 +85,7 @@ class Return(Statement):
     @classmethod
     def fold(cls, t):
         if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_return:
-            return Return(t.args[4].fold())
+            return Return(t.args[4].autofold())
 
     def to_json(self):
         json = Statement.to_json(self)
@@ -122,13 +122,13 @@ class Sequential(Statement):
         while isinstance(t, Apply) and \
                 isinstance(t.func, Const) and t.func.name == cls.ut_bind and \
                 isinstance(t.args[4], Lambda):
-                    stmts.append(Assign(t.args[4].arg_name, t.args[3].fold()))
+                    stmts.append(Assign(t.args[4].arg_name, t.args[3].autofold()))
                     t = t.args[4].body
         else:
             if len(stmts) == 0:
                 return None
             else:
-                stmts.append(t.fold())
+                stmts.append(t.autofold())
 
         return Sequential(*stmts)
 

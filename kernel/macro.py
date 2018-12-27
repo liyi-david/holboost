@@ -88,7 +88,7 @@ class Macro(Term, metaclass=abc.ABCMeta):
         try:
             folden_subterms = []
             for t in term.subterms():
-                folden_subterms.append(t.fold())
+                folden_subterms.append(t.autofold())
                 if folden_subterms[-1] is None:
                     return term
 

@@ -35,16 +35,16 @@ class BinaryNumberType(Macro):
     # ======================== operations on binary numbers ===================
 
     def _le(self, l, r):
-        return BinaryNumberComparison('<=', l, r)
+        return BinaryNumberExpr('<=', l, r)
 
     def _lt(self, l, r):
-        return BinaryNumberComparison('<', l, r)
+        return BinaryNumberExpr('<', l, r)
 
     def _eq(self, l, r):
-        return BinaryNumberComparison('=', l, r)
+        return BinaryNumberExpr('=', l, r)
 
 
-class BinaryNumberComparison(Macro):
+class BinaryNumberExpr(Macro):
 
     oprmap = {
             '<=' : Const('Coq.ZArith.BinInt.Z.le'),
@@ -52,12 +52,8 @@ class BinaryNumberComparison(Macro):
             '='  : Apply(Ind('Coq.Init.Logic.eq', 0), BinaryNumberType())
             }
 
-    @classmethod
-    def name(cls):
-        return "binary_number_comparison"
-
-    def __init__(self, opr, l, r):
-        assert opr in ('<=', '<', '='), "unsupported comparison operator %s" % opr
+    def __init__(self, opr, l, r=None):
+        assert opr in self.oprmap, "unsupported operator %s" % opr
         self.opr = opr
         self.l = l
         self.r = r
@@ -82,6 +78,27 @@ class BinaryNumberComparison(Macro):
                 self.oprmap[self.opr],
                 self.l, self.r
                 )
+
+    @classmethod
+    def fold(cls, t):
+
+        # fold 1: word library for unit-verification
+        _ut = "UnitVerify.Word."
+        _ut_binoprs = {
+                _ut + 'wadd'    : '+',
+                _ut + 'wminus'  : '-',
+                _ut + 'wmult'   : '*',
+                _ut + 'wdiv'    : '/',
+                _ut + 'wlt_bool': '<',
+                _ut + 'wle_bool': '<=',
+                _ut + 'wgt_bool': '>',
+                _ut + 'wge_bool': '>=',
+                _ut + 'weq_bool': '==',
+                _ut + 'wne_bool': '!=',
+                }
+
+        if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name in _ut_binoprs:
+            return cls(_ut_binoprs[t.func.name], t.args[0].autofold(), t.args[1].autofold())
 
 
 class BinaryNumberValue(Macro):
@@ -150,3 +167,4 @@ class BinaryNumberValue(Macro):
 
 integer = BinaryNumberType()
 BinaryNumberValue.register()
+BinaryNumberExpr.register()
