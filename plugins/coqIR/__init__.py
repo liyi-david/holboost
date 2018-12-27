@@ -50,10 +50,15 @@ class Assign(Statement):
             self.typ = None
 
     def render(self, environment=None, debug=False):
-        if self.name is not None:
-            return "%s ← %s" % (self.name, self.expr.render(environment, debug))
+        if isinstance(self.expr, Return):
+            str_expr = self.expr.val.render(environment, debug)
         else:
-            return self.expr.render(environment, debug)
+            str_expr = self.expr.render(environment, debug)
+
+        if self.name is not None:
+            return "%s ← %s" % (self.name, str_expr)
+        else:
+            return str_expr
 
     def unfold(self):
         raise Macro.MacroAbuse("cannot unfold a single assign statement!")
@@ -67,6 +72,26 @@ class Assign(Statement):
                 })
 
         return json
+
+
+class Guard(Statement):
+
+    def __init__(self, expr, typ):
+        self.expr = expr
+        self.typ = typ
+
+    def render(self, environment=None, debug=False):
+        return "// GUARD %s : %s" % (
+                self.expr.render(environment, debug),
+                self.typ.render(environment, debug)
+                )
+
+    @classmethod
+    def fold(cls, t):
+        _ut_guard = Const('src.type.GUARD')
+
+        if isinstance(t, Apply) and t.func == _ut_guard:
+            return cls(t.args[4], t.args[3])
 
 
 class Return(Statement):
@@ -145,4 +170,5 @@ print('coqIR, ', end='')
 Sequential.register()
 Labelled.register()
 Return.register()
+Guard.register()
 PlaceHolder.register()

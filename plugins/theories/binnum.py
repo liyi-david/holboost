@@ -23,10 +23,10 @@ class BinaryNumberType(Macro):
     def name(cls):
         return "binary_number_type"
 
-    def type(self, environment=None, context=[]):
+    def type(self, environment=None):
         return Sort.mkSet()
 
-    def render(self, environment=None, context=[], debug=False):
+    def render(self, environment=None, debug=False):
         return "int"
 
     def unfold(self):
@@ -58,19 +58,19 @@ class BinaryNumberExpr(Macro):
         self.l = l
         self.r = r
 
-    def type(self, environment=None, context=[]):
+    def type(self, environment=None):
         return Sort.mkProp()
 
-    def check(self, environment=None, context=[]):
-        _, sideff_l = self.l.check(environment, context)
-        _, sideff_r = self.r.check(environment, context)
+    def check(self, environment=None):
+        _, sideff_l = self.l.check(environment)
+        _, sideff_r = self.r.check(environment)
         return Sort.mkProp(), set.union(sideff_l, sideff_r)
 
-    def render(self, environment=None, context=[], debug=False):
+    def render(self, environment=None, debug=False):
         return "(%s %s %s)" % (
-                self.l.render(environment, context, debug),
+                self.l.render(environment, debug),
                 self.opr,
-                self.r.render(environment, context, debug),
+                self.r.render(environment, debug),
                 )
 
     def unfold(self):
@@ -85,7 +85,7 @@ class BinaryNumberExpr(Macro):
         # fold 1: word library for unit-verification
         _ut = "UnitVerify.Word."
         _ut_binoprs = {
-                _ut + 'wadd'    : '+',
+                _ut + 'wplus'    : '+',
                 _ut + 'wminus'  : '-',
                 _ut + 'wmult'   : '*',
                 _ut + 'wdiv'    : '/',
@@ -98,7 +98,7 @@ class BinaryNumberExpr(Macro):
                 }
 
         if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name in _ut_binoprs:
-            return cls(_ut_binoprs[t.func.name], t.args[0].autofold(), t.args[1].autofold())
+            return cls(_ut_binoprs[t.func.name], t.args[2].autofold(), t.args[3].autofold())
 
 
 class BinaryNumberValue(Macro):
@@ -113,13 +113,13 @@ class BinaryNumberValue(Macro):
     def name(cls):
         return "binary_number_value"
 
-    def type(self, environment=None, context=[]):
+    def type(self, environment=None):
         return integer
 
-    def check(self, environment=None, context=[]):
+    def check(self, environment=None):
         return integer, set()
 
-    def render(self, environment=None, context=[], debug=False):
+    def render(self, environment=None, debug=False):
         return str(self.value)
 
     def unfold(self):
