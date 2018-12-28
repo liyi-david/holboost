@@ -97,7 +97,7 @@ let init ?(server: string option = None) ?(port: int option = None) (_: unit): u
         | Some server, Some port -> try_connect server port
         | _ -> ()
         ;
-        try_connect "localhost" 8081;
+        try_connect "127.0.0.1" 8081;
         (* TODO establish a default remote holboost server *)
     end
 

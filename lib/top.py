@@ -1,6 +1,7 @@
 from kernel.environment import Environment
 from kernel.dsl import DSL
 from os.path import isfile
+from sys import exc_info
 
 import traceback
 
@@ -137,6 +138,23 @@ class Top:
             self.print('execution finished successfully.')
 
 
+    def recache_coq(self):
+        if 'coq' in self.namespace['cache']:
+            del self.namespace['cache']['coq']
+
+        coq_recache_cmd = """
+
+        Require Import ZArith.
+        Require Import String.
+
+        Require Import Holboost.plugin.
+
+        Boom Check 1.
+
+        """
+        self.runcoq(coq_recache_cmd)
+
+
     # =========================================================================
 
     # store/restore are used to reduce the communication cost. when a client send
@@ -210,10 +228,18 @@ class Top:
             try:
                 self.run(command)
             except Exception as err:
-                # traceback.print_exc()
-                # when an exception is triggered by a input command, there is not importance to traceback
-                # the full stack
-                print('\x1b[1;37;41m' + type(err).__name__ + '\x1b[0m', err)
+                if 'top' in self.debug_modules:
+                    traceback.print_exc()
+                else:
+                    # when an exception is triggered by a input command, there is not importance to traceback
+                    # the full stack
+                    _, _, tb = exc_info()
+                    stack = traceback.extract_tb(tb)
+                    print(
+                            '\x1b[1;37;41m' + type(err).__name__ + '\x1b[0m',
+                            '@', stack[-1].filename,
+                            ', line %3d: ' % stack[-1].lineno, err
+                            )
 
     # ================================= default top ===========================
     __default_top = None

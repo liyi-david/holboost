@@ -87,6 +87,9 @@ class StringValue(Macro):
             raise Macro.MacroFoldFailure
 
 
+    def type(self, environment=None, debug=False):
+        return string
+
     def render(self, environment=None, debug=False):
         return "\"%s\"" % self.val
 

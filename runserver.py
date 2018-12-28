@@ -1,10 +1,11 @@
-#!rlwrap python3
+#!rlwrap python3.6
 from lib.server import run_coq_server
 from lib.top import Top
 
 import sys
-sys.setrecursionlimit(100000)
+sys.setrecursionlimit(10000)
 
+# initialize top loop
 t = Top()
 Top.set_default(t)
 

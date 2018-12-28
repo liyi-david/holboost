@@ -41,6 +41,7 @@ class Ite(Macro):
         return None
 
     def unfold(self):
+        assert self.elseExpr is not None, "currently we cannot unfold a if with no else branch"
         # FIXME
         pass
 

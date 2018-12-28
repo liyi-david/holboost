@@ -161,6 +161,11 @@ class Term(abc.ABC):
         else:
             return Macro.fold(self)
 
+    def unfold(self):
+        return self.subterms_subst(
+                list(map(lambda t: t.unfold(), self.subterms()))
+                )
+
     def get_comment(self):
         if self.comment is None or self.comment == "":
             return ""
@@ -796,7 +801,7 @@ class Lambda(ContextTerm):
     def render(self, environment=None, debug=False) -> 'str':
         return "λ ({0}: {1}). {2}".format(
                 self.arg_name if self.arg_name is not None else "_",
-                self.arg_type.render(environment, debug),
+                self.arg_type.render(environment, debug) if self.arg_type is not None else "_",
                 self.body.render(ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment), debug)
                 )
 

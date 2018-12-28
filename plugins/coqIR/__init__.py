@@ -1,6 +1,8 @@
 from kernel.macro import Macro
 from kernel.environment import ContextEnvironment
-from kernel.term import Lambda, Var, Const, Apply, Binding
+from kernel.term import Lambda, Var, Const, Apply, Binding, Rel
+
+from plugins.theories.product import tuple
 
 
 class Statement(Macro):
@@ -43,11 +45,8 @@ class Assign(Statement):
         self.name = name
         self.expr = expr
 
-        try:
-            self.typ = typ if typ is not None else expr.type()
-        except:
-            # FIXME
-            self.typ = None
+        # type is not evaluated unless it needs type checking
+        self.typ = typ
 
     def render(self, environment=None, debug=False):
         if isinstance(self.expr, Return):
@@ -105,7 +104,13 @@ class Return(Statement):
         return "return %s" % self.val.render(environment, debug)
 
     def unfold(self):
-        pass
+        return Apply(
+                    Lambda(
+                        'r', None,
+                        Lambda('s', None, tuple(Rel(1), Rel(0)))
+                        ),
+                    self.val.unfold(),
+                    )
 
     @classmethod
     def fold(cls, t):
@@ -123,7 +128,7 @@ class Return(Statement):
 
 class Sequential(Statement):
 
-    ut_bind = "src.type.bind"
+    ut_bind = Const("src.type.bind")
 
     def __init__(self, *stmts):
         self.stmts = stmts
@@ -139,16 +144,24 @@ class Sequential(Statement):
         return "\n".join(str_stmts)
 
     def unfold(self):
-        pass
+        if isinstance(self.stmts[0], Assign):
+            return Apply(
+                    self.ut_bind,
+                    self.stmts[0].expr.unfold(),
+                    Lambda(self.stmts[0].name, self.stmts[0].typ, Sequential(*self.stmts[1:]).unfold()),
+                    )
+        elif isinstance(self.stmts[0], Return):
+            return self.stmts[0].unfold()
+        else:
+            assert False, "unrecognized head statement %s in a sequential composition" % self.stmts[0]
 
     @classmethod
     def fold(cls, t):
         stmts = []
-        while isinstance(t, Apply) and \
-                isinstance(t.func, Const) and t.func.name == cls.ut_bind and \
-                isinstance(t.args[4], Lambda):
-                    stmts.append(Assign(t.args[4].arg_name, t.args[3].autofold()))
-                    t = t.args[4].body
+        while isinstance(t, Apply) and t.func == cls.ut_bind and isinstance(t.args[4], Lambda):
+            stmts.append(Assign(t.args[4].arg_name, t.args[3].autofold()))
+            t = t.args[4].body
+
         else:
             if len(stmts) == 0:
                 return None
@@ -166,7 +179,6 @@ class Sequential(Statement):
         return json
 
 
-print('coqIR, ', end='')
 Sequential.register()
 Labelled.register()
 Return.register()
