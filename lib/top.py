@@ -149,7 +149,7 @@ class Top:
 
         Require Import Holboost.plugin.
 
-        Boom Check 1.
+        Boom Remote "print('recaching ...')".
 
         """
         self.runcoq(coq_recache_cmd)
@@ -165,9 +165,9 @@ class Top:
     __local_file = "cache.temp"
 
     def store(self):
-        from pickle import dump
+        from pickle import dump, HIGHEST_PROTOCOL
         with open(self.__local_file, "wb") as f:
-            dump(self.namespace['cache'], f)
+            dump(self.namespace['cache'], f, protocol=HIGHEST_PROTOCOL)
 
     def restore(self):
         from pickle import load
