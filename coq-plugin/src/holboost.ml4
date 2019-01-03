@@ -68,6 +68,18 @@ TACTIC EXTEND boom
 END;;
 
 
+VERNAC COMMAND EXTEND Boom_refresh CLASSIFIED AS QUERY
+| [ "Boom" "Refresh" ] -> [
+    Hbsync.builtin_cached := false;
+    Feedback.msg_info Pp.(str "Holboost cache will be forced to reload next time when `B(b)oom` instructions are executed.")
+]
+END;;
+
+VERNAC COMMAND EXTEND Boom_flags CLASSIFIED AS QUERY
+| [ "Boom" "Enable" "OpaqueProofExtraction" ] -> [ Taskexport.extract_opaqueproof := true; ]
+| [ "Boom" "Disable" "OpaqueProofExtraction" ] -> [ Taskexport.extract_opaqueproof := false; ]
+END;;
+
 VERNAC COMMAND EXTEND Boom_debug CLASSIFIED AS QUERY
 | [ "Boom" "Debug" "On" ] -> [
     let open Debug in
@@ -189,15 +201,6 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
         end
     ]
 END;;
-
-(*
-VERNAC COMMAND EXTEND Send CLASSIFIED AS QUERY
-| [ "Send" constr(c) ] -> [
-    Feedback.msg_info Pp.(str Yojson.(to_string (Serialize.constrexpr2json c)));
-    Feedback.msg_info Pp.(str Hbsync.(post_json Yojson.(to_string (constrexpr2json c)) "localhost:8081"));
-    ]
-END;;
-*)
 
 
 let _ =

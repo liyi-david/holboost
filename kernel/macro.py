@@ -18,11 +18,11 @@ class Macro(Term, metaclass=abc.ABCMeta):
         assert type(cls) is not Macro, "cannot evaluate the name of Macro itself"
         return str(cls).split("'")[1]
 
-    def type(self, environment, context=[]) -> 'Term':
-        return self.unfold().type(environment, context)
+    def type(self, environment=None) -> 'Term':
+        return self.unfold(environment).type(environment)
 
-    def check(self, environment, context=[]):
-        return self.unfold().check(environment, context)
+    def check(self, environment=None):
+        return self.unfold(environment).check(environment)
 
     def __eq__(self, t):
         if self is t:
@@ -37,7 +37,7 @@ class Macro(Term, metaclass=abc.ABCMeta):
         raise Macro.MacroAbuse
 
     @abc.abstractmethod
-    def unfold(self) -> 'Term':
+    def unfold(self, environment=None) -> 'Term':
         pass
 
     def to_json(self):

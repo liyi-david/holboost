@@ -16,13 +16,10 @@ class NatType(Macro):
     def name(cls):
         return "nat_type"
 
-    def type(self, environment=None, context=[]):
-        return Sort.mkSet()
-
-    def check(self, environment=None, context=[]):
+    def check(self, environment=None):
         return Sort.mkSet(), set()
 
-    def render(self, environment=None, context=[], debug=False):
+    def render(self, environment=None, debug=False):
         return "nat"
 
     @classmethod
@@ -32,7 +29,7 @@ class NatType(Macro):
 
         return None
 
-    def unfold(self):
+    def unfold(self, environment=None):
         return Ind("Coq.Init.Datatypes.nat", 0)
 
     def __call__(self, val):
@@ -72,19 +69,16 @@ class NatComparison(Macro):
         self.l = l
         self.r = r
 
-    def type(self, environment=None, context=[]):
-        return Sort.mkProp()
-
-    def check(self, environment=None, context=[]):
-        _, sideff_l = self.l.check(environment, context)
-        _, sideff_r = self.r.check(environment, context)
+    def check(self, environment=None):
+        _, sideff_l = self.l.check(environment)
+        _, sideff_r = self.r.check(environment)
         return Sort.mkProp(), set.union(sideff_l, sideff_r)
 
-    def render(self, environment=None, context=[], debug=False):
+    def render(self, environment=None, debug=False):
         return "(%s %s %s)" % (
-                self.l.render(environment, context, debug),
+                self.l.render(environment, debug),
                 self.opr,
-                self.r.render(environment, context, debug),
+                self.r.render(environment, debug),
                 )
 
     def unfold(self):
@@ -104,13 +98,13 @@ class NatValue(Macro):
         assert isinstance(val, int) and val >= 0, "non-natural number!"
         self.val = val
 
-    def type(self, environment=None, context=[]):
+    def type(self, environment=None):
         return nat
 
-    def check(self, environment=None, context=[]):
+    def check(self, environment=None):
         return nat, set()
 
-    def render(self, environment=None, context=[], debug=False):
+    def render(self, environment=None, debug=False):
         return str(self.val)
 
     @classmethod

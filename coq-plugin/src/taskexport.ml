@@ -1,8 +1,14 @@
 open Serialize
 open Mutindexport
+open Opaqueproof
+
 open Yojson.Basic
 
 exception ExportFailure of string
+
+(* some flag variables *)
+let extract_opaqueproof : bool ref = ref false
+
 
 let get_rewrite_hints (dbs: string list) : json =
     let get_in_single_db (db:string) : json list =
@@ -26,6 +32,7 @@ let get_rewrite_hints (dbs: string list) : json =
     end [] dbs in
     (`List rules)
 
+
 let get_variables env : json =
     let var_list = Environ.fold_named_context begin fun env decl var_list ->
         let name = Context.Named.Declaration.get_id decl in
@@ -35,6 +42,7 @@ let get_variables env : json =
         json_context_variable :: var_list
     end env ~init:[] in
     (`List var_list)
+
 
 let get_constants env : json = 
     let open Pre_env in
@@ -49,26 +57,36 @@ let get_constants env : json =
             const_list
         end
         else begin
+            let encode name typ body =
+                let lst_body = match body with
+                | None -> []
+                | Some body -> [ ("constant_body", constr2json body) ]
+                in
+                `Assoc (
+                    [
+                        ("constant_name", `String name);
+                        ("constant_type", constr2json typ);
+                    ] @ lst_body @ [
+                        ("is_builtin", `Bool (Hbsync.is_builtin name))
+                    ]
+                )
+            in
             let constant_body, _ = const in
             (
                 match constant_body.const_type, constant_body.const_body with
                 | RegularArity typ, Def const_body_substituted -> begin
-                    let json_constant_type = constr2json typ in
-                    let json_constant_body = constr2json (Mod_subst.force_constr const_body_substituted) in
-                    `Assoc [
-                        ("constant_name", `String constant_name);
-                        ("constant_type", json_constant_type);
-                        ("constant_body", json_constant_body);
-                        ("is_builtin", `Bool (Hbsync.is_builtin constant_name))
-                    ]
+                    encode constant_name typ (Some (Mod_subst.force_constr const_body_substituted))
+                end
+                | RegularArity typ, OpaqueDef opaque -> begin
+                    if !extract_opaqueproof then
+                        (* extract opaque proof is time consuming *)
+                        let body = Future.force (get_proof empty_opaquetab opaque) in
+                        encode constant_name typ (Some body)
+                    else
+                        encode constant_name typ None
                 end
                 | RegularArity typ, _ -> begin
-                    let json_constant_type = constr2json typ in
-                    `Assoc [
-                        ("constant_name", `String constant_name);
-                        ("constant_type", json_constant_type);
-                        ("is_builtin", `Bool (Hbsync.is_builtin constant_name))
-                    ]
+                    encode constant_name typ None
                 end
                 | _ -> raise (ExportFailure "currently we cannot handle template arity constants.")
             )
