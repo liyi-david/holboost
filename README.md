@@ -56,7 +56,11 @@ Most features of holboost coq plugin rely on its python backend, use the followi
 
 #### Vernac commands that relies on the python backend
 
-### Native vernac commands
+##### Controlling Holboost Parameters
+
+###### extract_opaqueproof
+
+#### Native vernac commands
 
 ### Tactics
 

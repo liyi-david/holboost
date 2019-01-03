@@ -672,6 +672,11 @@ class ContextTerm(Term):
         self.arg_type = arg_type
         self.body = body
 
+    def get_binding(self):
+        return Binding(
+                self.arg_name, type=self.arg_type
+                )
+
 
 class Prod(ContextTerm):
     def type(self, environment=None) -> 'Term':
@@ -748,6 +753,13 @@ class LetIn(ContextTerm):
         ContextTerm.__init__(self, arg_name, arg_type, body)
 
         self.arg_body = arg_body
+
+    def get_binding(self):
+        return Binding(
+                self.arg_name,
+                self.arg_body,
+                self.arg_type
+                )
 
     def type(self, environment=None, ) -> 'Term':
         return self.body.type(ContextEnvironment(Binding(self.arg_name, self.arg_body, self.arg_type), environment))

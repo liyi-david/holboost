@@ -9,26 +9,22 @@ class Tactic(metaclass=ABCMeta):
     name = "?"
     is_unreliable = False
 
-    @classmethod
-    def run(cls, goal, environment=None):
-        """
-        FINAL: I will fire myself if I ever override this function
-        """
-        result = cls._run(goal)
-        assert isinstance(result, tuple) and len(result) == 2, "result of tactic should be in form of (proofterm, new goals)"
-        proofterm, new_goals = result
-        if cls.is_unreliable:
-            if proofterm.type(environment) != goal.type(environment):
-                raise TacticFailure("the unreliable tactic %s fails in post-tactic type checking" % cls.name)
-
-        return proofterm, new_goals
 
     @classmethod
     @abstractmethod
-    def _run(cls, goal):
+    def run(cls, goal):
+        """
+        the result of running a tactic should be
+        - an iterable of goals
+        - raising a `TacticFailure` exception
+        """
         pass
 
     __registered_tactics = []
+
+    @classmethod
+    def registered(cls):
+        return cls.__registered_tactics
 
     @classmethod
     def register(cls):
