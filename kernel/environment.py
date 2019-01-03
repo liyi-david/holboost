@@ -152,7 +152,7 @@ class Environment(metaclass=ABCMeta):
     # =============================== syntax sugars ===========================
 
     def __getitem__(self, ident):
-        filt = lambda n: n.split(".")[-1] == ident
+        filt = lambda n: n == ident or n.endswith('.' + ident)
         results = self.variable(filt) + self.constant(filt) + self.constructor(filt) + self.ind(filt) + self.mutind(filt)
 
         if len(results) > 0:
