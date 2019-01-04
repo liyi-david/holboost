@@ -1,7 +1,8 @@
 from kernel.tactic import Tactic
 from kernel.environment import ContextEnvironment
 from kernel.term import Prod, Lambda, Binding, Apply, Const
-from kernel.proofview import Goal
+from kernel.proofview import Goal, Proof
+
 
 class UnfoldTactic(Tactic):
 
@@ -16,9 +17,7 @@ class UnfoldTactic(Tactic):
                         ),
                     g.env()
                     )
-            g.give_proof(new_goal)
-            print(new_goal)
 
-            return [new_goal]
+            return Proof(new_goal, new_goal)
         else:
             raise cls.TacticFailure

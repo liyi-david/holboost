@@ -2,6 +2,32 @@ from .environment import Environment
 from .term import Term, Sort
 from .tactic import Tactic
 
+from math import inf
+
+# FIXME use PriorityQueue in __pending_goals
+from queue import PriorityQueue
+
+
+class Proof:
+    def __init__(self, proof_formula, *succ_goals):
+        self.proof_formula = proof_formula
+        self.succ_goals = list(succ_goals)
+
+
+class UnionProof:
+    """
+    a union proof contains a set of sub-proofs that targets on the same goal. Finishing
+    any single proof in the sub-proof set will close the goal with current proof.
+
+    FIXME: as a consequent, a goal which is proved by a union proof may not be "CLOSED"
+    since there is still chances to extend the proof, e.g. to prove \exists a, a >= 2,
+    we can prove 1 >= 2, or 2 >= 2 or 3 >= 2, etc.
+
+    union proofs are NOT NESTED!
+    """
+    def __init__(self, *proofs):
+        self.proofs = proofs
+
 
 class Goal:
     def __init__(self, goal_formula, env=None):
@@ -25,6 +51,8 @@ class Goal:
         # FIXME for now we disable type checking for debugging
         # if proof.type(self.__proofview.env()) != self.__formula:
             # raise TypeError("type mismatch between the goal and the given proof")
+
+        # NOTE only a proofview instance is supposed to call this method
 
         self.__proof = proof
 
@@ -62,30 +90,22 @@ class Proofview:
         if self.__env is None:
             raise Exception("cannot prove anything with no environment (nor default environment) provided!")
 
-    def auto(self, until=lambda p: False):
+    def step(self, until=lambda p: False): return self.auto(until=until, bound=1)
+
+    def auto(self, until=lambda p: False, bound=inf):
         something_done = True
-        while not until(self) and something_done and not self.closed():
+        steps = 0
+
+        while not until(self) and something_done and not self.closed() and steps < bound:
             # if no tactic works on any pending goal, the process terminates
             something_done = False
+            steps += 1
 
             for goal in self.__pending_goals:
                 for tactic in Tactic.registered():
                     try:
-                        generated_new_goals = tactic.run(goal)
-                        assert goal.closed(), "tactic %s finishes with the goal %s still open!" % (
-                                tactic.__name__,
-                                repr(goal)
-                                )
-
-                        if tactic.is_unreliable:
-                            # TODO perform post-type-checking
-                            pass
-
-                        # append the generated new goals to the queue
-                        self.close_goal(goal)
-                        for g in generated_new_goals:
-                            self.__pending_goals.append(g)
-
+                        proof = tactic.run(goal)
+                        self.close_goal_with_proof(goal, proof)
                         break
                     except Tactic.TacticFailure:
                         pass
@@ -107,6 +127,20 @@ class Proofview:
         self.__pending_goals.remove(goal)
         self.__closed_goals.append(goal)
 
+    def close_goal_with_proof(self, goal, proof):
+        assert goal in self.__pending_goals
+        assert not goal.closed()
+
+        if isinstance(proof, Proof):
+            self.__pending_goals += proof.succ_goals
+        elif isinstance(proof, UnionProof):
+            assert False, "unimplemented"
+        else:
+            raise Exception("unsupported proof type : %s" % type(proof))
+
+        goal.give_proof(proof)
+        self.close_goal(goal)
+
     def closed(self):
         return len(self.__pending_goals) == 0
 
@@ -118,9 +152,10 @@ class Proofview:
                     self.__goal.render(self.__env)
                     )
         else:
-            return "<proofview on %s, %d goals pending>" % (
+            return "<proofview on %s, %d goals pending, %d goals closed>" % (
                     self.__goal.render(self.__env),
-                    len(self.__pending_goals)
+                    len(self.__pending_goals),
+                    len(self.__closed_goals)
                     )
 
     def __str__(self):

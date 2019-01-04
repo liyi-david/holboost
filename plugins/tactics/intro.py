@@ -1,7 +1,7 @@
 from kernel.tactic import Tactic
 from kernel.environment import ContextEnvironment
 from kernel.term import Prod, Lambda, Binding
-from kernel.proofview import Goal
+from kernel.proofview import Goal, Proof
 
 class IntroTactic(Tactic):
 
@@ -12,8 +12,10 @@ class IntroTactic(Tactic):
                     g.formula().body,
                     ContextEnvironment(g.formula().get_binding(), g.env())
                     )
-            g.give_proof(Lambda(g.formula().arg_name, g.formula().arg_type, new_goal))
 
-            return [new_goal]
+            return Proof(
+                    Lambda(g.formula().arg_name, g.formula().arg_type, new_goal),
+                    new_goal
+                    )
         else:
             raise cls.TacticFailure

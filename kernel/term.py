@@ -582,12 +582,23 @@ class Rel(Term):
         if self.index < depth:
             return self
 
+        if self.index >= depth + len(ctx_rels):
+            return Rel(self.index - len(ctx_rels))
+
+
         # for example, given a term with type
         # forall n, m: nat, n >= m, if we wanna apply it to a single number n = 0, i.e.
         # we wanna have forall m: nat, 0 >= m
         # in this case, we we iterate to "n >= m", we have depth = 1, and n is Rel(1), the correct
         # index is -1 * ((1 - depth) + 1)
-        return ctx_rels[ -1 * ((self.index - depth) + 1) ]
+
+        # FIXME add a unit test here
+        index_to_subst = -1 * ((self.index - depth) + 1)
+
+        if isinstance(ctx_rels[index_to_subst], Rel):
+            return Rel(ctx_rels[index_to_subst].index + depth)
+        else:
+            return ctx_rels[index_to_subst]
 
 
 class Apply(Term):
@@ -784,7 +795,7 @@ class LetIn(ContextTerm):
                 )
 
     def __eq__(self, value):
-        return isinstance(value, Prod) and \
+        return isinstance(value, LetIn) and \
                 value.arg_name == self.arg_name and \
                 value.arg_type == self.arg_type and \
                 value.arg_body == self.arg_body and \
@@ -794,7 +805,7 @@ class LetIn(ContextTerm):
         return [self.arg_type, self.arg_body, self.body]
 
     def subterms_subst(self, subterms):
-        return Prod(self.arg_name, *subterms)
+        return LetIn(self.arg_name, *subterms)
 
 
 class Lambda(ContextTerm):
@@ -818,7 +829,7 @@ class Lambda(ContextTerm):
                 )
 
     def __eq__(self, value):
-        return isinstance(value, Prod) and \
+        return isinstance(value, Lambda) and \
                 value.arg_name == self.arg_name and \
                 value.arg_type == self.arg_type and \
                 value.body == self.body
@@ -827,7 +838,7 @@ class Lambda(ContextTerm):
         return [self.arg_type, self.body]
 
     def subterms_subst(self, subterms):
-        return Prod(self.arg_name, *subterms)
+        return Lambda(self.arg_name, *subterms)
 
 
 class Construct(Term):
