@@ -273,6 +273,13 @@ class Sort(Term):
     def mkType(cls, univ: 'Universe'):
         return Sort(SortEnum.type, univ)
 
+    def is_prop(self): return self.sort == SortEnum.prop
+
+    def is_set(self): return self.sort == SortEnum.set
+
+    def is_type(self): return self.sort == SortEnum.type
+
+
 class Cast(Term):
 
     def __init__(self, body: 'Term', cast_kind: 'int', guaranteed_type: 'Term'):
