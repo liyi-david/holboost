@@ -14,9 +14,7 @@ class Tactic(metaclass=ABCMeta):
     @abstractmethod
     def run(cls, goal):
         """
-        the result of running a tactic should be
-        - an iterable of goals
-        - raising a `TacticFailure` exception
+        the result of running a tactic should be a kernel.proofview.Proof
         """
         pass
 

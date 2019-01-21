@@ -108,6 +108,9 @@ class Term(abc.ABC):
         """ this function replace subterms by a given list """
         pass
 
+    def depth(self):
+        return 1 + max(map(lambda t: t.depth(), self.subterms()), default=0)
+
     def __str__(self) -> 'str':
         if Task.get_current() is not None:
             return self.render(Task.get_current())
@@ -614,7 +617,7 @@ class Apply(Term):
         Term.__init__(self)
 
         self.func = func
-        self.args = args
+        self.args = list(args)
 
     def type(self, environment=None) -> 'Term':
         # if the type of func is A -> B -> C and there are two arguments, then the type of the whole term

@@ -7,4 +7,4 @@ from .induction import InductionTactic
 IntroTactic.register()
 UnfoldTactic.register()
 SimplTactic.register()
-# InductionTactic.register()
+InductionTactic.register()
