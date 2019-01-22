@@ -14,6 +14,10 @@ class Proof:
         self.proof_formula = proof_formula
         self.succ_goals = list(succ_goals)
 
+    def failed(self):
+        # a proof is failed once a subgoal is aborted
+        return any(map(lambda g: g.aborted(), self.succ_goals))
+
 
 class UnionProof:
     """
@@ -32,6 +36,20 @@ class UnionProof:
 
     def append(self, *proofs):
         self.proofs += proofs
+
+    def failed(self):
+        # an union proof is faileded only when all of its sub-proofs
+        # are failed
+        return all(map(lambda p: p.failed(), self.proofs))
+
+
+class AbortedProof:
+    """
+    a failed proof contains a partial proof
+    """
+
+    def __init__(self, raw_proof):
+        self.raw_proof = raw_proof
 
 
 class Goal:
@@ -57,6 +75,9 @@ class Goal:
 
     def formula(self): return self.__formula
 
+    def abort_proof(self):
+        self.__proof = AbortedProof(self.__proof)
+
     def give_proof(self, proof):
         # FIXME for now we disable type checking for debugging
         # if proof.type(self.__proofview.env()) != self.__formula:
@@ -73,6 +94,12 @@ class Goal:
             # there is only a single proof
             self.__proof = UnionProof(self.__proof, *proofs)
 
+    def proof(self):
+        return self.__proof
+
+    def parent(self):
+        return self.__parent
+
     def set_parent(self, parent_goal):
         self.__parent = parent_goal
 
@@ -84,7 +111,12 @@ class Goal:
         return self.__closed
 
     def proved(self):
-        return self.__proof is not None
+        return self.__proof is not None and not isinstance(self.__proof, AbortedProof)
+
+    def aborted(self):
+        # a goal is labelled `aborted` only when an aborted proof is provided
+        # this basically make it easier to manage the different proof queues
+        return self.__proof is not None and isinstance(self.__proof, AbortedProof)
 
     def trace(self):
         p = self
@@ -93,14 +125,13 @@ class Goal:
             trace.append(p)
             p = p.__parent
 
-        return "\n".join(map(lambda g: g.formula().render(g.env()), trace))
+        return "\n".join(map(lambda g: repr(g), trace))
 
     def __repr__(self):
-        if self.__closed:
-            if self.__proof is None:
-                status = "Aborted"
-            else:
-                status = "Closed"
+        if self.aborted():
+            status = "Aborted"
+        elif self.closed():
+            status = "Closed"
         else:
             status = "Pending"
 
@@ -128,23 +159,25 @@ class Proofview:
     It follows the concept of proofview in Coq but does not precisely follow its definition.
     """
 
+    class ProofFailed(Exception): pass
+
     def __init__(self, goal_formula, env=None, oracle=Oracle):
         if not isinstance(goal_formula, Term):
             raise TypeError("the goal-to-prove must be a Holboost term.")
 
-        env = env if env is not None else Environment.default()
-        if goal_formula.type(env) != Sort.mkProp():
+        self.__env = env if env is not None else Environment.default()
+
+        if goal_formula.type(self.__env) != Sort.mkProp():
             raise TypeError("only propositions can be proved.")
 
-        self.__goal = goal_formula
+        self.__goal = Goal(goal_formula, self.__env)
         self.__proof = None
         self.__pending_goals = []
         self.__proved_goals = []
         self.__aborted_goals = []
-        self.__env = env
         self.__oracle = oracle
 
-        self.__pending_goals.append(Goal(goal_formula, self.env()))
+        self.__pending_goals.append(self.__goal)
 
         if self.__env is None:
             raise Exception("cannot prove anything with no environment (nor default environment) provided!")
@@ -217,11 +250,52 @@ class Proofview:
         """
         abort a goal. it may affect its parent goals
         """
-        assert goal in self.__pending_goals
+        assert goal in self.__pending_goals or goal in self.__proved_goals
 
+
+        # close the goal (with no proof give) first
+        proof = goal.proof()
+        goal.abort_proof()
         goal.close()
+
         self.__aborted_goals.append(goal)
-        self.__pending_goals.remove(goal)
+        if goal in self.__pending_goals:
+            self.__pending_goals.remove(goal)
+        else:
+            self.__proved_goals.remove(goal)
+
+
+        # close all the subgoals
+        if proof is None:
+            pass
+        elif isinstance(proof, Proof):
+            for g in proof.succ_goals:
+                if not g.aborted():
+                    self.abort_goal(g)
+        elif isinstance(proof, UnionProof):
+            for subproof in proof.proofs:
+                for g in subproof.succ_goals:
+                    if not g.aborted():
+                        self.abort_goal(g)
+
+
+        # close the parent goal if needed
+        if goal.parent() is not None:
+            if not goal.parent().aborted():
+                self.try_abort_goal(goal.parent())
+        else:
+            # every goal has its parents except for the root goal
+            # when the root goal is aborted the proofview fails
+            assert goal == self.__goal
+            raise self.ProofFailed
+
+    def try_abort_goal(self, goal):
+        # if there is no possibility to prove the goal any more
+        # the the goal is aborted
+
+        assert not goal.aborted(), "a goal should not be aborted twice"
+        if goal.proof().failed():
+            self.abort_goal(goal)
 
     def close_goal_with_proofs(self, goal, *proofs):
         """
@@ -248,12 +322,12 @@ class Proofview:
         if self.closed():
             status = "closed" if len(self.__aborted_goals) == 0 else "failed"
             return "<proofview on %s, %s>" % (
-                    self.__goal.render(self.__env),
+                    self.__goal.formula().render(self.__env),
                     status
                     )
         else:
             return "<proofview on %s, %d goals pending, %d goals closed, %d goals aborted>" % (
-                    self.__goal.render(self.__env),
+                    self.__goal.formula().render(self.__env),
                     len(self.__pending_goals),
                     len(self.__proved_goals),
                     len(self.__aborted_goals)
