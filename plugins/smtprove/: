@@ -1,4 +1,0 @@
-from .proofterm import SmtProvable
-from .tactic import SmtTactic
-
-SmtTactic.register()

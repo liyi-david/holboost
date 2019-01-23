@@ -18,6 +18,9 @@ class Proof:
         # a proof is failed once a subgoal is aborted
         return any(map(lambda g: g.aborted(), self.succ_goals))
 
+    def qed(self):
+        return all(map(lambda g: a.qed(), self.succ_goals))
+
 
 class UnionProof:
     """
@@ -42,6 +45,14 @@ class UnionProof:
         # are failed
         return all(map(lambda p: p.failed(), self.proofs))
 
+    def qed(self):
+        return any(map(lambda p: p.qed(), self.proofs))
+
+    @property
+    def succ_goals(self):
+        # FIXME low efficiency
+        return sum(map(lambda p: p.succ_goals, self.proofs), [])
+
 
 class AbortedProof:
     """
@@ -50,6 +61,12 @@ class AbortedProof:
 
     def __init__(self, raw_proof):
         self.raw_proof = raw_proof
+
+    def failed(self):
+        return True
+
+    def qed(self):
+        return False
 
 
 class Goal:
@@ -70,6 +87,7 @@ class Goal:
         self.__env = env
         self.__parent = parent
         self.__closed = False
+        self.created_by = None
 
     def env(self): return self.__env
 
@@ -113,6 +131,9 @@ class Goal:
     def proved(self):
         return self.__proof is not None and not isinstance(self.__proof, AbortedProof)
 
+    def qed(self):
+        return self.__proof is not None and self.__proof.qed()
+
     def aborted(self):
         # a goal is labelled `aborted` only when an aborted proof is provided
         # this basically make it easier to manage the different proof queues
@@ -127,6 +148,9 @@ class Goal:
 
         return "\n".join(map(lambda g: repr(g), trace))
 
+    def render(self, *args, **kwargs):
+        return self.formula().render(*args, **kwargs)
+
     def __repr__(self):
         if self.aborted():
             status = "Aborted"
@@ -135,7 +159,8 @@ class Goal:
         else:
             status = "Pending"
 
-        return "<%s Goal: %s>" % (status, self.__formula.render(self.env()))
+        str_created_by = "" if self.created_by is None else ", created by " + str(self.created_by)
+        return "<%s Goal: %s%s>" % (status, self.__formula.render(self.env()), str_created_by)
 
 
 class Oracle(metaclass=ABCMeta):
@@ -214,6 +239,10 @@ class Proofview:
                         # try to create a new proof
                         proof = tactic.run(goal)
                         assert isinstance(proof, Proof), "invalid proof given by tactic %s" % str(tactic)
+
+                        for g in proof.succ_goals:
+                            g.created_by = tactic
+
                         proofs.append(proof)
                     except Tactic.TacticFailure:
                         pass
@@ -236,6 +265,9 @@ class Proofview:
     def aborted_goals(self):
         return tuple(self.__aborted_goals)
 
+    def proved_goals(self):
+        return tuple(self.__proved_goals)
+
     def close_goal(self, goal):
         """
         close a goal that already has a proof
@@ -243,6 +275,7 @@ class Proofview:
         assert goal in self.__pending_goals, "somehow the goal is not in the pending list"
 
         goal.close()
+
         self.__pending_goals.remove(goal)
         self.__proved_goals.append(goal)
 
@@ -287,7 +320,7 @@ class Proofview:
             # every goal has its parents except for the root goal
             # when the root goal is aborted the proofview fails
             assert goal == self.__goal
-            raise self.ProofFailed
+            raise self.ProofFailed("the proof cannot be finished automatically")
 
     def try_abort_goal(self, goal):
         # if there is no possibility to prove the goal any more
@@ -308,10 +341,46 @@ class Proofview:
         for proof in proofs:
             goal.give_proof(proof)
             self.__pending_goals += proof.succ_goals
+
+            # when a proof does not have any successing goals ...
+            # NOTE
+            # a proof is completed only when at least one of its successing
+            # proofs has no successing goals
+            if len(proof.succ_goals) == 0:
+                # the proof is finished
+                # now we break and close the goal
+                self.close_goal(goal)
+                self.qed_goal(goal)
+                return
+
             for gl in proof.succ_goals:
                 gl.set_parent(goal)
 
         self.close_goal(goal)
+
+    def qed_goal(self, goal):
+
+        # abort all the unproved subgoals
+        proof = goal.proof()
+        if isinstance(proof, Proof):
+            for g in proof.succ_goals:
+                if not g.proved():
+                    self.abort_goal(g)
+        elif isinstance(proof, UnionProof):
+            for subproof in proof.proofs:
+                for g in proof.succ_goals:
+                    if not g.proved():
+                        self.abort_goal(g)
+        else:
+            assert False
+
+        # check whether the parent goal can be qed
+        if goal.parent() is None:
+            return
+        else:
+            if goal.parent().qed():
+                self.qed_goal(goal.parent())
+
 
     def closed(self):
         return len(self.__pending_goals) == 0
@@ -354,5 +423,6 @@ class Proofview:
         else:
             return repr(self) + "\n\n" + "\n".join(map(
                     lambda g: "\t" + get_symbol(g) + ' ' + g.formula().render(g.env()),
-                    self.__pending_goals + ([] if not debug else (self.__proved_goals + self.__aborted_goals))
+                        list(sorted(self.__pending_goals, key=lambda g: self.__oracle.evaluate_goal(g), reverse=True)) +
+                        ([] if not debug else (self.__proved_goals + self.__aborted_goals))
                     )) + "\n"

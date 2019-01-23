@@ -1,4 +1,4 @@
-from kernel.macro import Proof
+from kernel.macro import ProofTerm
 
 class RewriteProof(Proof):
 

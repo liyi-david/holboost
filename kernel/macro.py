@@ -123,7 +123,7 @@ class Macro(Term, metaclass=abc.ABCMeta):
         return self._lt(r, l)
 
 
-class Proof(Term, metaclass=abc.ABCMeta):
+class ProofTerm(Term, metaclass=abc.ABCMeta):
 
     """
     A term is called provable, if and only if it is proved by some plugins in holboost. Since the tool

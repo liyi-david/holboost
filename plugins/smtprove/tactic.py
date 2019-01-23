@@ -1,8 +1,17 @@
 from kernel.tactic import Tactic
-from .proofterm import SmtProof
+from kernel.proofview import Proof
+
+from .proofterm import SmtSolved
 
 class SmtTactic(Tactic):
 
     @classmethod
-    def _run(cls, goal, environment=None):
-        return SmtProof(goal), []
+    def run(cls, goal):
+
+        # in what cases we can use smt?
+
+        # how to convert env and goal to smt?
+
+        # how to obtain the proofterm from smt?
+
+        raise cls.TacticFailure
