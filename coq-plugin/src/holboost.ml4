@@ -6,6 +6,7 @@ open Genarg
 open Extraargs
 
 open Taskexport
+open Boom_autorewrite
 
 DECLARE PLUGIN "holboost"
 
@@ -28,42 +29,11 @@ TACTIC EXTEND boom
     end
 ] 
 | [ "boom" "cbv" string(pat) ] -> [ Hbtactics.cbv pat ]
+| [ "boom" "autorewrite" "with" ne_preident_list(l) "in" "*"] -> [
+    boom_autorewrite_in_all_hypos l
+]
 | [ "boom" "autorewrite" "with" ne_preident_list(l) ] -> [
-    let autorewrite_command = `Assoc [
-        ("name", `String "rewrite");
-        ("hints", (get_rewrite_hints l))
-    ] in
-    Taskexport.get_task_and_then ~cmd:autorewrite_command begin 
-        fun s ->
-            let resp = Hbsync.(post_json s) in
-            let open Yojson.Basic.Util in
-            if (resp |> member "error" |> to_bool) then begin
-                Feedback.msg_info Pp.(str "holboost failed because " ++ str (resp |> member "msg" |> to_string));
-                Tacticals.New.tclIDTAC
-            end else
-                try
-                    match (resp |> member "feedback") with
-                    | `Null -> begin
-                        Feedback.msg_info Pp.(str "holboost rewriting failed to make any new progress.");
-                        Tacticals.New.tclIDTAC
-                    end
-                    | _ -> begin
-                        let ec = Serialize.(json2econstr (resp |> member "feedback" |> member "proof")) in
-                        let ucs = Univexport.univ_constraints_import (resp |> member "feedback" |> member "sideff") in
-                        let sigma, env = Pfedit.get_current_context () in
-                        let sigma_new = Evd.add_constraints sigma ucs in
-                        let sigma_new = Evd.fix_undefined_variables sigma_new in
-                        Debug.debug "autorewrite" Printer.(pr_econstr ec);
-                        let open Tactics in
-                        Proofview.tclTHEN
-                            (Proofview.Unsafe.tclEVARSADVANCE sigma_new)
-                            (Tactics.apply ec)
-                    end
-                with
-                    Not_found ->
-                        Feedback.msg_info Pp.(str "failed to print the returned econstr");
-                        Tacticals.New.tclIDTAC
-    end
+    boom_autorewrite_curr_goal l
 ]
 END;;
 

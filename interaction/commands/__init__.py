@@ -1,3 +1,5 @@
+from .command import Command
+
 from .rewrite import RewriteCommand
 from .connect import ConnectCommand
 from .idle import IdleCommand

@@ -45,3 +45,11 @@ class CheckCommand(Command):
             top.print(returnstr)
 
         return returnstr
+
+    @classmethod
+    def from_json(cls, json_item):
+        if 'fullcheck' in json_item:
+            fullcheck = json_item['fullcheck']
+        else:
+            fullcheck = False
+        return CheckCommand(json_item['id'], JsonFormat.import_term(json_item['term']), fullcheck)

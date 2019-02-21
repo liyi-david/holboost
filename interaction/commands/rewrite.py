@@ -67,6 +67,21 @@ class RewriteCommand(Command):
     def get_hint_by_left_pattern(self, pat):
         return self.left_pat_map[id(pat)]
 
+    @classmethod
+    def from_json(cls, json_item):
+        return RewriteCommand(
+                list(
+                    map(
+                        lambda hintrec : RewriteCommand.RewriteHint(
+                            Term.from_json(hintrec['type']),
+                            Term.from_json(hintrec['lemma']),
+                            hintrec['right2left']
+                        ),
+                        json_item['hints']
+                    )
+                )
+            )
+
     def run(self, top):
         patterns = list(map(lambda hint: hint.pat_left, self.hints))
 

@@ -12,5 +12,6 @@ src/serialize.ml
 src/hbsync.ml
 src/mutindexport.ml
 src/taskexport.ml
+src/boom_autorewrite.ml
 src/holboost.ml4
 theory/plugin.v

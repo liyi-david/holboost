@@ -16,3 +16,7 @@ class ConnectCommand(Command):
         # TODO session is important for further parallel optimization
         # here 0 is only a placeholder
         return { "session": 0 }
+
+    @classmethod
+    def from_json(cls, json_item):
+        return ConnectCommand()

@@ -4,7 +4,7 @@ from kernel.term import *
 from kernel.task import Task, NamedEnvironment
 from kernel.universe import *
 
-from interaction.commands import *
+from interaction.commands import Command
 from interaction.commands.result import *
 
 import json
@@ -81,33 +81,7 @@ class JsonFormat(Format):
 
     @staticmethod
     def import_command(json_item):
-        if json_item is None:
-            return IdleCommand()
-        elif json_item['name'] == "rewrite":
-            return RewriteCommand(
-                    list(
-                        map(
-                            lambda hintrec : RewriteCommand.RewriteHint(
-                                JsonFormat.import_term(hintrec['type']),
-                                JsonFormat.import_term(hintrec['lemma']),
-                                hintrec['right2left']
-                            ),
-                            json_item['hints']
-                        )
-                    )
-                )
-        elif json_item['name'] == "connect":
-            return ConnectCommand()
-        elif json_item['name'] == "check":
-            if 'fullcheck' in json_item:
-                fullcheck = json_item['fullcheck']
-            else:
-                fullcheck = False
-            return CheckCommand(json_item['id'], JsonFormat.import_term(json_item['term']), fullcheck)
-        elif json_item['name'] == "run":
-            return RunCommand(json_item['command'])
-        else:
-            raise Exception("unknown command %s" % json_item['name'])
+        return Command.from_json(json_item)
 
 
     @staticmethod

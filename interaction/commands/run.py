@@ -12,6 +12,9 @@ class RunCommand(Command):
         Command.__init__(self)
         self.cmd = cmd
 
+    def from_json(self, json_item):
+        return RunCommand(json_item['command'])
+
     def run(self, top):
         try:
             top.run(self.cmd)
