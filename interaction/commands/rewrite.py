@@ -56,13 +56,15 @@ class RewriteCommand(Command):
 
             # print("pattern of %s : %s -> %s" % (self.lemma, self.pat_left, self.pat_right))
 
-    def __init__(self, hints):
+    def __init__(self, hints, target):
+        Command.__init__(self)
+
         self.hints = hints
         self.left_pat_map = {}
+        self.target = target
         for hint in self.hints:
             self.left_pat_map[id(hint.pat_left)] = hint
 
-        Command.__init__(self)
 
     def get_hint_by_left_pattern(self, pat):
         return self.left_pat_map[id(pat)]
@@ -79,7 +81,8 @@ class RewriteCommand(Command):
                         ),
                         json_item['hints']
                     )
-                )
+                ),
+                None if 'in' not in json_item else json_item['in']
             )
 
     def run(self, top):

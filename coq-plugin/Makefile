@@ -15,6 +15,19 @@ clean:
 	make -f $(MAKEFILE_COQ) clean
 	rm -f $(MAKEFILE_COQ)
 
+test: clean install
+	@for file in $(shell ls $(CURDIR)/tests/*.v); do \
+		printf "testing $$file ... "; \
+		coqc $$file > .test.stdout 2>.test.stderr || { \
+			printf "failed !\n"; \
+			printf "=== STDOUT ===\n" && cat .test.stdout; \
+			printf "=== STDERR ===\n" && cat .test.stderr; \
+			break; \
+		}; \
+		printf "done.\n"; \
+	done
+	@rm -f .test.stdout .test.stderr
+
 .merlin: Makefile.coq
 	make -f $(MAKEFILE_COQ) .merlin
 	echo "PKG yojson" >> .merlin

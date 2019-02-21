@@ -21,7 +21,6 @@ class Command(abc.ABC):
                     importlib.import_module("." + submodule, 'interaction.commands'),
                     subclassname
                     )
-            print(subclass)
             return subclass.from_json(json_item)
 
     @abc.abstractmethod

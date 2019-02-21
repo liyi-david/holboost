@@ -7,3 +7,7 @@ Definition f3 := 0.
 Definition f4 := 0.
 
 Goal f + f1 + f2 + f3 + f4 = 0.
+Proof.
+    boom cbv "Top\.f".
+    reflexivity.
+Qed.

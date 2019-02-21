@@ -1,3 +1,4 @@
+from kernel.term import Term
 from .command import Command
 
 class CheckCommand(Command):
@@ -52,4 +53,4 @@ class CheckCommand(Command):
             fullcheck = json_item['fullcheck']
         else:
             fullcheck = False
-        return CheckCommand(json_item['id'], JsonFormat.import_term(json_item['term']), fullcheck)
+        return CheckCommand(json_item['id'], Term.from_json(json_item['term']), fullcheck)
