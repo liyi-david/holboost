@@ -21,7 +21,7 @@ let get_rewrite_hints (dbs: string list) : json =
                     ("type", (constr2json rule.rew_type));
                     ("pattern", (constr2json rule.rew_pat));
                     ("lemma", (constr2json rule.rew_lemma));
-                    ("right2left", `Bool rule.rew_l2r)
+                    ("left2right", `Bool rule.rew_l2r)
                 ]
             in
             json_rule :: json_rules

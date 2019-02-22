@@ -17,10 +17,11 @@
 - (done) the sync system is still not working
 - (done) problem in type universe
 - (done) modeling side effects (as a method of Term)
+- (done) feedback exceptions when parsing or running commands
     
 
 - check patterns in forall, make sure that bounded variables cannot be matched
-- feedback exceptions when parsing or running commands
 - further optmization through local pipe/file
 - write a help document for the tool
 - consider figuring out which libraries are buffered (when we import non-init libs, e.g. ZArith, it is extremely important since they are big!)
+- use a global cache system for different modules

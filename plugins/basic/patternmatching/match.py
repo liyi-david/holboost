@@ -143,8 +143,11 @@ def match(patterns, term, match_subterm=False, environment=None, top=None):
     @term: the term to match
     @match_subterm: if set to True, then match all subterms of term
     """
+    top.debug('match', 'matching start.')
     if isinstance(patterns, Term):
         patterns = [ patterns ]
+
+    patterns = list(patterns)
 
     if environment is None:
         environment = Environment.default()

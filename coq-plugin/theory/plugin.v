@@ -25,3 +25,11 @@ Proof.
   intro H1.
   apply H1.
 Qed.
+
+Theorem rewrite_r2l : forall (T:Type) (a b:T) (P: T -> Prop), a = b -> (P a -> P b).
+Proof.
+  intros T a b P H.
+  rewrite <-H.
+  intro H1.
+  apply H1.
+Qed.

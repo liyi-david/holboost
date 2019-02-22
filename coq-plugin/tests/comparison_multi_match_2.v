@@ -13,4 +13,9 @@ Section A.
     Hint Rewrite (H c): wtf.
 
     Goal a + a + b + c = 0.
+    Proof.
+        autorewrite with wtf.
+        auto.
+    Qed.
 
+End A.

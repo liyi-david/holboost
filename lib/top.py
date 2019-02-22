@@ -70,8 +70,8 @@ class Top:
         if Environment.default() is not None:
             task = Environment.default()
 
-        if 'task' in self.namespace:
-            task = self.namespace['task']
+        if '__task__' in self.namespace:
+            task = self.namespace['__task__']
 
         if task is None:
             self.print("neither default environment nor current task is provided.")
@@ -196,6 +196,8 @@ class Top:
             self.print("Loading configurations from .holboostrc.local.")
         except FileNotFoundError:
             pass
+        except Exception as err:
+            print(err)
 
         print("Holboost toploop started.")
         multiline_command = ""

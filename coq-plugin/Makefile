@@ -22,7 +22,6 @@ test: clean install
 			printf "failed !\n"; \
 			printf "=== STDOUT ===\n" && cat .test.stdout; \
 			printf "=== STDERR ===\n" && cat .test.stderr; \
-			break; \
 		}; \
 		printf "done.\n"; \
 	done

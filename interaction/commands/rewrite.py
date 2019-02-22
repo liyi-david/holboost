@@ -41,10 +41,10 @@ def obtain_equality(term):
 class RewriteCommand(Command):
 
     class RewriteHint:
-        def __init__(self, type: 'Term', lemma: 'Term', right2left: 'bool'):
+        def __init__(self, type: 'Term', lemma: 'Term', left2right: 'bool'):
             self.type = type
             self.lemma = lemma
-            self.right2left = right2left
+            self.left2right = left2right
 
             # extract context and equality, e.g.
             # forall n:nat, n = n ->   n:nat    (n - 1) + 1 = n
@@ -56,18 +56,34 @@ class RewriteCommand(Command):
 
             # print("pattern of %s : %s -> %s" % (self.lemma, self.pat_left, self.pat_right))
 
+        def get_pattern(self, reversed=False):
+            if self.left2right:
+                return self.pat_left
+            else:
+                return self.pat_right
+
+    # ======= functions of RewriteCommand =======
+
     def __init__(self, hints, target):
         Command.__init__(self)
 
         self.hints = hints
-        self.left_pat_map = {}
+        self.pat_map = {}
         self.target = target
         for hint in self.hints:
-            self.left_pat_map[id(hint.pat_left)] = hint
+            self.pat_map[id(hint.pat_left)] = hint
+            self.pat_map[id(hint.pat_right)] = hint
+
+    def __str__(self):
+        target = "goal" if self.target is None else self.target
+        return "boom autorewrite [%s] with hints [%s]" % (
+                target,
+                ", ".join(map(lambda h: str(h.lemma), self.hints))
+                )
 
 
-    def get_hint_by_left_pattern(self, pat):
-        return self.left_pat_map[id(pat)]
+    def get_hint_by_pattern(self, pat):
+        return self.pat_map[id(pat)]
 
     @classmethod
     def from_json(cls, json_item):
@@ -77,7 +93,7 @@ class RewriteCommand(Command):
                         lambda hintrec : RewriteCommand.RewriteHint(
                             Term.from_json(hintrec['type']),
                             Term.from_json(hintrec['lemma']),
-                            hintrec['right2left']
+                            hintrec['left2right']
                         ),
                         json_item['hints']
                     )
@@ -85,13 +101,15 @@ class RewriteCommand(Command):
                 None if 'in' not in json_item else json_item['in']
             )
 
-    def run(self, top):
-        patterns = list(map(lambda hint: hint.pat_left, self.hints))
+    def rewrite_single_formula(self, name, formula, top):
+        # when name != __goal__, the current formula is one of the hypothesises
+        # in local variables
+        patterns = list(map(lambda h: h.get_pattern(reversed=(name != "__goal__")), self.hints))
 
         for pat in patterns:
-            top.debug("rewrite", "left pattern: ", pat.render(self.task))
+            top.debug("rewrite", "pattern: ", pat.render(self.task))
 
-        match_result = match(patterns, self.task.goal, match_subterm=True, environment=self.task, top=top)
+        match_result = match(patterns, formula, match_subterm=True, environment=self.task, top=top)
 
         top.debug("rewrite", "match finished.")
 
@@ -112,7 +130,8 @@ class RewriteCommand(Command):
         # it is important to use reversed here, since a pair (a, b, c) is actually constructed as
         # (a, (b, c)) in coq, so first we prove that b, c = b', c' instead of a and a'
         for one_match in reversed(match_result.matches):
-            hint = self.get_hint_by_left_pattern(one_match.pattern)
+            top.debug("rewrite", "match", one_match)
+            hint = self.get_hint_by_pattern(one_match.pattern)
 
             # TODO: find why the args are reversed???
             eq_hyp_args = [one_match.metavar_map[i] for i in range(hint.context.length())]
@@ -163,10 +182,10 @@ class RewriteCommand(Command):
 
             return term.subterms_subst(subterms)
 
-        P = Lambda("__VAR_TUPLE", Ttuple, replace(0, self.task.goal))
+        P = Lambda("__VAR_TUPLE", Ttuple, replace(0, formula))
         # construct the final term to apply
         partial_proof = Apply(
-                Const("Holboost.plugin.rewrite_l2r"),
+                Const("Holboost.plugin.rewrite_" + ("l2r" if name == "__goal__" else "r2l")),
                 Ttuple, a, b, P, proof
                 )
 
@@ -184,8 +203,25 @@ class RewriteCommand(Command):
         _, sideff = partial_proof.check(self.task)
 
         result = {
+                "target": name,
                 "proof": partial_proof.to_json(),
                 "sideff": list(map(lambda uc: uc.to_json(), sideff))
                 }
 
         return result
+
+
+    def run(self, top):
+        # TODO store hints in global cache
+
+        if self.target is None:
+            formulas = [('__goal__', self.task.goal)]
+        elif self.target == '*':
+            formulas = map(lambda vdecl: (vdecl[0], vdecl[1].type()), self.task.variables().items())
+
+        resulted_tactics = []
+        for name, formula in formulas:
+            top.debug("rewrite", "start working on %s: %s" % (name, str(formula)))
+            resulted_tactics.append(self.rewrite_single_formula(name, formula, top))
+
+        return resulted_tactics

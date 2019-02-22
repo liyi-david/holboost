@@ -37,9 +37,10 @@ def CoqTaskHandlerFactory(top : 'Top'):
                     if task.client in top.namespace['cache']:
                         task.inherited_environment = top.namespace['cache'][task.client]
 
-                    top.namespace['task'] = task
+                    top.namespace['__task__'] = task
 
                     result = task.run(top)
+                    top.namespace['__result__'] = result
 
                     if task.client not in top.namespace['cache']:
                         builtins = task.get_builtins()
