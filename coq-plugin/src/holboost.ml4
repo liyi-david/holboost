@@ -50,7 +50,7 @@ VERNAC COMMAND EXTEND Boom_flags CLASSIFIED AS QUERY
 | [ "Boom" "Disable" "OpaqueProofExtraction" ] -> [ Taskexport.extract_opaqueproof := false; ]
 END;;
 
-VERNAC COMMAND EXTEND Boom_debug CLASSIFIED AS QUERY
+VERNAC COMMAND EXTEND Boom_control_flags CLASSIFIED AS QUERY
 | [ "Boom" "Debug" "On" ] -> [
     let open Debug in
     debug_flag := true;
@@ -60,6 +60,14 @@ VERNAC COMMAND EXTEND Boom_debug CLASSIFIED AS QUERY
     let open Debug in
     debug_flag := false;
     Feedback.msg_info Pp.(str "holboost debug information deactivated.")
+    ]
+    | [ "Boom" "Profiling" "On" ] -> [
+    Hbprofile.enable_profiling ();
+    Feedback.msg_info Pp.(str "holboost profiling activated.")
+    ]
+    | [ "Boom" "Profiling" "Off" ] -> [
+    Hbprofile.enable_profiling ();
+    Feedback.msg_info Pp.(str "holboost profiling deactivated.")
     ]
 END;;
 
@@ -159,15 +167,12 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
             fun s ->
                 let resp = Hbsync.(post_json s) in
                 let open Yojson.Basic.Util in
-                if (resp |> member "error" |> to_bool) then begin
-                    Feedback.msg_info Pp.(str "holboost failed because " ++ str (resp |> member "msg" |> to_string))
-                end else
-                    try
-                        match (resp |> member "feedback") with
-                        | `String msg -> Feedback.msg_info Pp.(str msg)
-                        | _ -> Feedback.msg_info Pp.(str "invalid feedback from holboost server")
-                    with
-                        Not_found -> Feedback.msg_info Pp.(str "feedback missing")
+                try
+                    match (resp |> member "feedback") with
+                    | `String msg -> Feedback.msg_info Pp.(str msg)
+                    | _ -> Feedback.msg_info Pp.(str "invalid feedback from holboost server")
+                with
+                    Not_found -> Feedback.msg_info Pp.(str "feedback missing")
         end
     ]
 END;;

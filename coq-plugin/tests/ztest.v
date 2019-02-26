@@ -6,7 +6,7 @@ Open Scope Z_scope.
 Definition hundred := 100.
 
 Boom Print hundred.
-Boom Remote "task['hundred'].body.autofold()".
+Boom Remote "__task__['hundred'].body.autofold()".
 
 Definition add := 2 + 5.
-Boom Remote "task['add'].body.autofold()".
+Boom Remote "__task__['add'].body.autofold()".

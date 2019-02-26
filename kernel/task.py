@@ -8,12 +8,14 @@ class Task(NamedEnvironment):
     # in this case, it may be rewritten as a dict mapping session to tasks
     current = None
 
-    def __init__(self, goal, constants={}, variables={}, mutinds={}, command=None, client=None):
+    def __init__(self, goal, constants={}, variables={}, mutinds={}, command=None, client=None, client_addr=None):
         NamedEnvironment.__init__(self, constants, mutinds, variables)
 
         self.goal = goal
         self.command = command
         self.client = client
+        self.client_addr = client_addr
+
         if self.command is not None:
             self.command.task = self
 

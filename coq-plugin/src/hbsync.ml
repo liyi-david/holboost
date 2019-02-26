@@ -41,6 +41,7 @@ let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (
     end in
     let s = to_string j in
     let temp_file = write_to_temp_file s in
+    Hbprofile.profiling_step "sending request";
     let ic = Unix.open_process_in (Printf.sprintf "curl -s http://%s/coq --data @%s" target temp_file) in
     let all_input = ref "" in begin
         try
@@ -51,9 +52,15 @@ let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (
             End_of_file ->
                 close_in ic
     end;
+    Hbprofile.profiling_step "parsing json response";
     let json_resp = from_string !all_input in begin
         let open Yojson.Basic.Util in
-        builtin_cached := (json_resp |> member "builtin_cached" |> to_bool);
+        if (json_resp |> member "error" |> to_bool) then begin
+            Feedback.msg_info Pp.(str "fatal error: " ++ str (json_resp |> member "msg" |> to_string));
+            raise SyncFailure
+        end
+        else
+            builtin_cached := (json_resp |> member "builtin_cached" |> to_bool)
     end;
     json_resp
 

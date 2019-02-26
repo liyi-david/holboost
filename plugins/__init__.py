@@ -4,12 +4,19 @@ from kernel.macro import Macro
 
 from traceback import print_exc
 
+ignored_plugins = (
+        "mediator"
+        )
+
 
 def load_plugins(top, plugin_dir="plugins"):
     print("scanning plugins ... ", end="")
     loaded = []
 
     for plugin in listdir(plugin_dir):
+        if plugin in ignored_plugins:
+            continue
+
         if isdir(join(plugin_dir, plugin)):
             files = listdir(join(plugin_dir, plugin))
             if "__init__.py" in files:

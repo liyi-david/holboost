@@ -1,6 +1,6 @@
 from kernel.term import *
 
-from .boom import BoomLanguage
+# from .boom import BoomLanguage
 from .patternmatching import *
 
 # some global shortcuts
@@ -9,4 +9,4 @@ Set = Sort.mkSet()
 Type = lambda univ: Sort.mkType(univ)
 
 # register the language
-BoomLanguage.register()
+# BoomLanguage.register()

@@ -18,7 +18,7 @@ clean:
 test: clean install
 	@for file in $(shell ls $(CURDIR)/tests/*.v); do \
 		printf "testing $$file ... "; \
-		coqc $$file > .test.stdout 2>.test.stderr || { \
+		echo "" | coqtop -init-file $$file > .test.stdout 2>.test.stderr || { \
 			printf "failed !\n"; \
 			printf "=== STDOUT ===\n" && cat .test.stdout; \
 			printf "=== STDERR ===\n" && cat .test.stderr; \

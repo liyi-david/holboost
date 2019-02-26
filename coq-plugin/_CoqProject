@@ -4,6 +4,7 @@
 -Q theory Holboost
 
 src/hbcommon.ml
+src/hbprofile.ml
 src/hbtactics.ml
 src/declbuf.ml
 src/debug.ml

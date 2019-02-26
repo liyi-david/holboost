@@ -104,6 +104,7 @@ let get_constants env : json =
  *)
 let get_task_and_then ?(cmd:json = `Null) (hook: json -> unit Proofview.tactic) : unit Proofview.tactic =
     Proofview.Goal.enter_one begin fun gl ->
+        Hbprofile.profiling_start "serializing environment to json";
         let env = Proofview.Goal.env gl in
         let _ = Proofview.Goal.sigma gl in
         let goal_concl = Proofview.Goal.concl gl in
@@ -120,11 +121,18 @@ let get_task_and_then ?(cmd:json = `Null) (hook: json -> unit Proofview.tactic) 
                 ("command", cmd)
             ]
         in begin
-            hook json_task
+            Hbprofile.profiling_step "running hook function";
+            let hook_new = begin fun j ->
+                let res = hook j in
+                Hbprofile.profiling_step "applying tactic";
+                res
+            end in
+            Hbprofile.profiling_end_after_tactic (hook_new json_task)
         end
     end
 
 let get_nonproof_task_and_then ?(cmd:json = `Null) (hook: json -> 'a) : 'a =
+    Hbprofile.profiling_start "serializing environment to json";
     let env = 
         try
             let _, env = Pfedit.get_current_goal_context () in
@@ -144,5 +152,11 @@ let get_nonproof_task_and_then ?(cmd:json = `Null) (hook: json -> 'a) : 'a =
             ("command", cmd)
         ]
     in begin
-        hook json_task
+        Hbprofile.profiling_step "start running hook function";
+        let hook_new = begin fun j ->
+            let res = hook j in
+            Hbprofile.profiling_end ();
+            res
+        end in
+        hook_new json_task
     end

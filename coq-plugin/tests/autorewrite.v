@@ -1,5 +1,7 @@
 Require Import Holboost.plugin.
 
+Boom Profiling On.
+
 Definition test := fun (a: nat * nat * nat) => match a with (b, _, _) => b end.
 
 Hypothesis H:forall n: nat, n = 0.

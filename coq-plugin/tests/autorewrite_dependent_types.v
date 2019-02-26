@@ -26,6 +26,5 @@ Proof.
 *)
     Boom Print Universes.
     boom autorewrite with wtf.
-    Boom Remote "rewrite_proof.check(task)".
     auto.
 Qed.

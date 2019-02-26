@@ -30,6 +30,7 @@ def CoqTaskHandlerFactory(top : 'Top'):
                 try:
                     task = JsonFormat.import_task(parsed_data['content'])
                     task.client = parsed_data['client']
+                    task.client_addr = self.client_address
 
                     top.print(task)
 
@@ -64,6 +65,12 @@ def CoqTaskHandlerFactory(top : 'Top'):
                             "msg"      : "json decoding failes because %s. for further information please refer to the server log" % str(err)
                             }
                 except JsonConvertError as err:
+                    top.print(str(err))
+                    reply = {
+                            "error"    : True,
+                            "msg"      : str(err)
+                            }
+                except Exception as err:
                     top.print(str(err))
                     reply = {
                             "error"    : True,

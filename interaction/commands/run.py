@@ -17,10 +17,14 @@ class RunCommand(Command):
         return RunCommand(json_item['command'])
 
     def run(self, top):
+        if not self.task.client_addr[0] in ("127.0.0.1", "localhost"):
+            msg = "Authorization failure, only local clients can run arbitrary python command."
+            return msg
+
         try:
             top.run(self.cmd)
             return "successfully finished."
         except Exception as err:
             from traceback import print_exc
             print_exc()
-            return "failed because %s" % str(err)
+            raise err
