@@ -1,6 +1,8 @@
 Holboost
 ===
 
+For documents please refer to [wiki](https://github.com/liyi-david/holboost/wiki).
+
 Holboost is a python wrapper for Coq, the high-order-logic proof assistant. Most of the data structures in Coq are re-defined in python, but in a different style. The goal of holboost is not to perform perfect mathematical proof but to acheive better automation of program reasoning.
 
 This project contains the following parts:
