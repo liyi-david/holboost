@@ -8,11 +8,10 @@ src/hbprofile.ml
 src/hbtactics.ml
 src/declbuf.ml
 src/debug.ml
-src/univexport.ml
-src/serialize.ml
+src/jsonUniv.ml
+src/jsonConstr.ml
 src/hbsync.ml
-src/mutindexport.ml
-src/taskexport.ml
-src/boom_autorewrite.ml
+src/jsonMutind.ml
+src/jsonTask.ml
 src/holboost.ml4
 theory/plugin.v

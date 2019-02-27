@@ -1,4 +1,4 @@
-open Serialize
+open JsonConstr
 open Yojson.Basic
 
 exception Unimplemented of string

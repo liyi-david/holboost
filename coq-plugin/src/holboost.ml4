@@ -5,8 +5,8 @@ open Stdarg
 open Genarg
 open Extraargs
 
-open Taskexport
-open Boom_autorewrite
+open JsonTask
+open Hbtactics
 
 DECLARE PLUGIN "holboost"
 
@@ -22,7 +22,7 @@ END
 
 TACTIC EXTEND boom
 | [ "boom" ] -> [
-    Taskexport.get_task_and_then begin
+    JsonTask.get_task_and_then begin
         fun s ->
             let resp = Hbsync.(post_json s) in
             Tacticals.New.tclIDTAC
@@ -46,8 +46,8 @@ VERNAC COMMAND EXTEND Boom_refresh CLASSIFIED AS QUERY
 END;;
 
 VERNAC COMMAND EXTEND Boom_flags CLASSIFIED AS QUERY
-| [ "Boom" "Enable" "OpaqueProofExtraction" ] -> [ Taskexport.extract_opaqueproof := true; ]
-| [ "Boom" "Disable" "OpaqueProofExtraction" ] -> [ Taskexport.extract_opaqueproof := false; ]
+| [ "Boom" "Enable" "OpaqueProofExtraction" ] -> [ JsonTask.extract_opaqueproof := true; ]
+| [ "Boom" "Disable" "OpaqueProofExtraction" ] -> [ JsonTask.extract_opaqueproof := false; ]
 END;;
 
 VERNAC COMMAND EXTEND Boom_control_flags CLASSIFIED AS QUERY
@@ -74,13 +74,13 @@ END;;
 
 VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
 | [ "Boom" "TypeOf" constr(c) ] -> [
-    let json_constr = Serialize.constrexpr2json c in
+    let json_constr = JsonConstr.constrexpr2json c in
     let check_command = `Assoc [
         ("name", `String "check");
         ("term", json_constr);
         ("id", `Null)
     ] in
-    Taskexport.get_nonproof_task_and_then ~cmd:check_command begin
+    JsonTask.get_nonproof_task_and_then ~cmd:check_command begin
         fun s ->
             let resp = Hbsync.(post_json s) in
             let open Yojson.Basic.Util in
@@ -96,14 +96,14 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
     end
     ]
 | [ "Boom" "Check" constr(c) ] -> [
-    let json_constr = Serialize.constrexpr2json c in
+    let json_constr = JsonConstr.constrexpr2json c in
     let check_command = `Assoc [
         ("name", `String "check");
         ("term", json_constr);
         ("id", `Null);
         ("fullcheck", `Bool true)
     ] in
-    Taskexport.get_nonproof_task_and_then ~cmd:check_command begin
+    JsonTask.get_nonproof_task_and_then ~cmd:check_command begin
         fun s ->
             let resp = Hbsync.(post_json s) in
             let open Yojson.Basic.Util in
@@ -124,7 +124,7 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
             ("term", `Null);
             ("id", `String (Names.Id.to_string id));
         ] in
-        Taskexport.get_nonproof_task_and_then ~cmd:check_command begin
+        JsonTask.get_nonproof_task_and_then ~cmd:check_command begin
             fun s ->
                 let resp = Hbsync.(post_json s) in
                 let open Yojson.Basic.Util in
@@ -163,7 +163,7 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
             ("name", `String "run");
             ("command", `String cmd);
         ] in
-        Taskexport.get_nonproof_task_and_then ~cmd:run_command begin
+        JsonTask.get_nonproof_task_and_then ~cmd:run_command begin
             fun s ->
                 let resp = Hbsync.(post_json s) in
                 let open Yojson.Basic.Util in

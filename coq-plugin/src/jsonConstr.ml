@@ -36,7 +36,7 @@ let constr2json (c: Constr.t) : json =
                     [
                         ("type", `String "sort");
                         ("sort", `String sort_name);
-                        ("univ", Univexport.universe_export sort_univ);
+                        ("univ", JsonUniv.universe_export sort_univ);
                         ("comment", `String !comment);
                     ]
             | Cast (c, kind, types) ->
@@ -86,14 +86,14 @@ let constr2json (c: Constr.t) : json =
                     [
                         ("type", `String "const");
                         ("name", `String const_name);
-                        ("univ_inst", Univexport.universe_inst_export univ_inst)
+                        ("univ_inst", JsonUniv.universe_inst_export univ_inst)
                     ]
             | Ind ((ind, index), univ_inst) ->
                     [
                         ("type", `String "ind");
                         ("mutind_name", `String (Names.MutInd.to_string ind));
                         ("ind_index", `Int index);
-                        ("univ_inst", Univexport.universe_inst_export univ_inst)
+                        ("univ_inst", JsonUniv.universe_inst_export univ_inst)
                     ]
             | Construct (((ind, index), constructor_index), univ_inst) ->
                     (*
@@ -106,7 +106,7 @@ let constr2json (c: Constr.t) : json =
                         ("mutind_name", `String (Names.MutInd.to_string ind));
                         ("ind_index", `Int index);
                         ("constructor_index", `Int (constructor_index - 1));
-                        ("univ_inst", Univexport.universe_inst_export univ_inst)
+                        ("univ_inst", JsonUniv.universe_inst_export univ_inst)
                     ]
             (* TODO CoFix, Proj *)
             (* FIXME Case *)
@@ -168,7 +168,7 @@ let rec json2econstr (ext: json) : EConstr.t =
                 match sort_name with
                 | "prop" -> Sorts.prop
                 | "set"  -> Sorts.set
-                | "type" -> Sorts.Type (Univexport.universe_import (ext |> member "univ"))
+                | "type" -> Sorts.Type (JsonUniv.universe_import (ext |> member "univ"))
                 | _ -> raise (DeserializingFailure ("unexpected sort name", ext))
             end
             | "prod" ->

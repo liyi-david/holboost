@@ -1,5 +1,5 @@
-open Serialize
-open Mutindexport
+open JsonConstr
+open JsonMutind
 open Opaqueproof
 
 open Yojson.Basic
@@ -108,7 +108,7 @@ let get_task_and_then ?(cmd:json = `Null) (hook: json -> unit Proofview.tactic) 
         let env = Proofview.Goal.env gl in
         let _ = Proofview.Goal.sigma gl in
         let goal_concl = Proofview.Goal.concl gl in
-        let json_goal_concl = Serialize.constr2json (EConstr.Unsafe.to_constr goal_concl) in
+        let json_goal_concl = JsonConstr.constr2json (EConstr.Unsafe.to_constr goal_concl) in
         let json_constants = get_constants env in
         let json_variables = get_variables env in
         let json_mutinds = get_mutinds env in
