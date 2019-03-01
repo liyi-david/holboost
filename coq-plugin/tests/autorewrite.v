@@ -15,6 +15,8 @@ Hypothesis H2: forall (A:Type), forall (a:A), (f a) = (g a).
 Hint Rewrite H : wtf.
 Hint Rewrite (H2 nat) : wtf.
 
+Boom Debug On.
+
 (*
 Goal
     (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + 

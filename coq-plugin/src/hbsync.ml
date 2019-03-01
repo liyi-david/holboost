@@ -42,7 +42,9 @@ let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (
     let s = to_string j in
     let temp_file = write_to_temp_file s in
     Hbprofile.profiling_step "sending request";
-    let ic = Unix.open_process_in (Printf.sprintf "curl -s http://%s/coq --data @%s" target temp_file) in
+    let req_cmd = Printf.sprintf "curl -s http://%s/%s --data @%s" target temp_file temp_file in
+    Debug.debug "hbsync" Pp.(str req_cmd);
+    let ic = Unix.open_process_in req_cmd in
     let all_input = ref "" in begin
         try
             while true do
