@@ -13,6 +13,16 @@ open Ltac_plugin
 open G_tactic
 open JsonTask
 
+let unfold_by_names (names: string list) : unit tactic =
+    tclENV >>= fun env ->
+        let constants = Hbcommon.get_constants_by_names names env in
+        let evaluable_constants = List.map (fun c -> (Locus.AllOccurrences, Names.EvalConstRef c)) constants in
+        Tactics.unfold_in_concl evaluable_constants
+;;
+
+let unfold_fst_snd = unfold_by_names ["Coq.Init.Datatypes.fst"; "Coq.Init.Datatypes.snd"];;
+
+
 let cbv (pattern: string) : unit tactic =
     let re = Str.regexp pattern in
     tclENV >>=
@@ -82,7 +92,7 @@ let boom_autorewrite l extra_cmd =
                     end
                     | _ -> begin
                         let open Tactics in
-                        List.fold_left begin fun prev_tac curr_item ->
+                        List.fold_right begin fun curr_item succ_tac ->
                             let ec = JsonConstr.(json2econstr (curr_item |> member "proof")) in
                             let ucs = JsonUniv.univ_constraints_import (curr_item |> member "sideff") in
                             let sigma, env = Pfedit.get_current_context () in
@@ -99,8 +109,8 @@ let boom_autorewrite l extra_cmd =
                                     (Proofview.Unsafe.tclEVARSADVANCE sigma_new)
                                     (Tactics.Simple.apply_in (Names.id_of_string target) ec)
                             in
-                            Proofview.tclTHEN prev_tac tac
-                        end Tacticals.New.tclIDTAC (resp |> member "feedback" |> to_list)
+                            Proofview.tclTHEN tac succ_tac
+                        end (resp |> member "feedback" |> to_list) unfold_fst_snd
                     end
                 with
                     Not_found ->

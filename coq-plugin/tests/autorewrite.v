@@ -43,5 +43,5 @@ Goal
 Goal (f 1) + (f 1) = (g 0) + (g 0).
 
     boom autorewrite with wtf.
-    auto.
+    reflexivity.
 Qed.

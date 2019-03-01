@@ -26,5 +26,5 @@ Proof.
 *)
     Boom Print Universes.
     boom autorewrite with wtf.
-    auto.
+    reflexivity.
 Qed.

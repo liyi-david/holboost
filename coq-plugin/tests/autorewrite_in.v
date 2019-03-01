@@ -16,6 +16,5 @@ Goal (f 0) + (f 0) = 0 -> (g 0) + (g 0) = 0.
 Proof.
     intro H3.
     boom autorewrite with wtf in *.
-    unfold fst, snd in *.
     assumption.
 Qed.
