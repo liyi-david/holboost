@@ -224,4 +224,6 @@ class RewriteCommand(Command):
             top.debug("rewrite", "start working on %s: %s" % (name, str(formula)))
             resulted_tactics.append(self.rewrite_single_formula(name, formula, top))
 
+        print('a')
+
         return resulted_tactics

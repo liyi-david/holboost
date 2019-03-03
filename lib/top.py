@@ -196,8 +196,6 @@ class Top:
             self.print("Loading configurations from .holboostrc.local.")
         except FileNotFoundError:
             pass
-        except Exception as err:
-            print(err)
 
         print("Holboost toploop started.")
         multiline_command = ""

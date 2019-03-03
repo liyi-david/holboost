@@ -92,73 +92,67 @@ class Environment(metaclass=ABCMeta):
 
     # =========================== common interfaces ===========================
 
-    def constant(self, _filter):
-        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+    # def constant(self, _filter):
+        # assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
 
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
+        # if isinstance(_filter, str):
+            # name = _filter
+            # _filter = lambda s: s == name
 
-        return list(filter(
-            lambda item: _filter(item.name), self.constants().values()
-            ))
+        # return list(filter(
+            # lambda item: _filter(item.name), self.constants().values()
+            # ))
 
-    def variable(self, _filter):
-        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+    # def variable(self, _filter):
+        # assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
 
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
+        # if isinstance(_filter, str):
+            # name = _filter
+            # _filter = lambda s: s == name
 
-        return list(filter(
-            lambda item: _filter(item.name), self.variables().values()
-            ))
+        # return list(filter(
+            # lambda item: _filter(item.name), self.variables().values()
+            # ))
 
-    def mutind(self, _filter):
-        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+    # def mutind(self, _filter):
+        # assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
 
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
+        # if isinstance(_filter, str):
+            # name = _filter
+            # _filter = lambda s: s == name
 
-        return list(filter(
-            lambda item: _filter(item.name), self.mutinds().values()
-            ))
+        # return list(filter(
+            # lambda item: _filter(item.name), self.mutinds().values()
+            # ))
 
-    def ind(self, _filter):
-        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+    # def ind(self, _filter):
+        # assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
 
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
+        # if isinstance(_filter, str):
+            # name = _filter
+            # _filter = lambda s: s == name
 
-        return list(filter(
-            lambda ind: _filter(ind.name),
-            self.inds().values()
-            ))
+        # return list(filter(
+            # lambda ind: _filter(ind.name),
+            # self.inds().values()
+            # ))
 
-    def constructor(self, _filter):
-        assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
+    # def constructor(self, _filter):
+        # assert isinstance(_filter, (str, lambda_type)), "string or lambda functions are supposed when looking up declarations"
 
-        if isinstance(_filter, str):
-            name = _filter
-            _filter = lambda s: s == name
+        # if isinstance(_filter, str):
+            # name = _filter
+            # _filter = lambda s: s == name
 
-        return list(filter(
-            lambda c: _filter(c.name),
-            self.constructors().values()
-            ))
+        # return list(filter(
+            # lambda c: _filter(c.name),
+            # self.constructors().values()
+            # ))
 
     # =============================== syntax sugars ===========================
 
     def __getitem__(self, ident):
-        filt = lambda n: n == ident or n.endswith('.' + ident)
-        results = self.variable(filt) + self.constant(filt) + self.constructor(filt) + self.ind(filt) + self.mutind(filt)
-
-        if len(results) > 0:
-            return results[0]
-        else:
-            raise KeyError("identifier %s is not found." % ident)
+        assert False, "unimplemented"
 
     def __str__(self):
         rel = repr(self)
@@ -199,6 +193,33 @@ class NamedEnvironment(Environment):
                 builtins.add_mutind(mutind)
 
         return builtins
+
+    def __getitem__(self, ident):
+        # search for constants
+        for name, const in self.__constants.items():
+            if name.endswith("." + ident):
+                return const
+
+        for name, var in self.__variables.items():
+            if name == "ident":
+                return var
+
+        for name, mutind in self.__mutinds.items():
+            if name.endswith("." + ident):
+                return mutind
+
+            for ind in mutind.inds:
+                if ind.name.endswith("." + ident):
+                    return ind
+
+                for constructor in ind.constructors:
+                    if constructor.name == ident:
+                        return constructor
+
+        if self.inherited_environment is not None:
+            return self.inherited_environment[ident]
+        else:
+            return None
 
     def __iadd__(self, env):
         """
@@ -256,6 +277,15 @@ class NamedEnvironment(Environment):
         self.__mutinds[mutind.name] = mutind
         # self.__prefixes.add(prefix_of(mutind.name))
 
+    def constant(self, name):
+        if name in self.__constants:
+            return self.__constants[name]
+        else:
+            if self.inherited_environment is None:
+                return None
+
+            return self.inherited_environment.constant(name)
+
     def constants(self):
         result = self.__constants.copy()
         if self.inherited_environment is not None:
@@ -263,12 +293,31 @@ class NamedEnvironment(Environment):
 
         return result
 
+
+    def variable(self, name):
+        if name in self.__variables:
+            return self.__variables[name]
+        else:
+            if self.inherited_environment is None:
+                return None
+
+            return self.inherited_environment.variable(name)
+
     def variables(self):
         result = self.__variables.copy()
         if self.inherited_environment is not None:
             result.update(self.inherited_environment.variables())
 
         return result
+
+    def mutind(self, name):
+        if name in self.__mutinds:
+            return self.__mutinds[name]
+        else:
+            if self.inherited_environment is None:
+                return None
+
+            return self.inherited_environment.mutind(name)
 
     def mutinds(self):
         result = self.__mutinds.copy()
@@ -314,17 +363,38 @@ class ContextEnvironment(Environment):
         self.binding = binding
         self.inherited_environment = env
 
+    def __getitem__(self, ident):
+        return self.inherited_environment[ident]
+
+    def constant(self, name):
+        if self.inherited_environment is None:
+            return None
+        else:
+            return self.inherited_environment.constant(name)
+
     def constants(self):
         if self.inherited_environment is not None:
             return self.inherited_environment.constants()
         else:
             return {}
 
+    def variable(self, name):
+        if self.inherited_environment is None:
+            return None
+        else:
+            return self.inherited_environment.variable(name)
+
     def variables(self):
         if self.inherited_environment is not None:
             return self.inherited_environment.variables()
         else:
             return {}
+
+    def mutind(self, name):
+        if self.inherited_environment is None:
+            return None
+        else:
+            return self.inherited_environment.mutind(name)
 
     def mutinds(self):
         if self.inherited_environment is not None:

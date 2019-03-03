@@ -17,7 +17,6 @@ Hint Rewrite (H2 nat) : wtf.
 
 Boom Debug On.
 
-(*
 Goal
     (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + 
     (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + (f 1) + 
@@ -40,10 +39,7 @@ Goal
     (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + 
     (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + 
     (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0) + (g 0).
-*)
-(* make it easier to debug first ....... *)
-Goal (f 1) + (f 1) = (g 0) + (g 0).
-
-    boom autorewrite with wtf.
+Proof.
+    Time boom autorewrite with wtf.
     reflexivity.
 Qed.

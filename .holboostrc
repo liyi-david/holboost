@@ -17,6 +17,3 @@ if "coq" in cache:
 else:
     env = NamedEnvironment()
     Environment.set_default(env)
-
-# debug('rewrite',)
-

@@ -1,20 +1,18 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from time import time
 from urllib.parse import urlparse, parse_qs
+from time import time
+from sys import stdout
 
 from interaction.formats.json import JsonFormat, JsonConvertError
 from kernel.environment import NamedEnvironment
 
 import threading
+import traceback
+import cProfile
 
-try:
-    import ujson as json
-except ImportError:
-    import json
-    print("json in python stdlib is extremely slow. use `pip install ujson` to obtain better performance\n")
+import json
 
-
-def CoqTaskHandlerFactory(top : 'Top'):
+def CoqTaskHandlerFactory(top : 'Top', profile : bool):
     # to generate CoqTaskHandlers with arguments
 
     class CoqTaskHandler(BaseHTTPRequestHandler):
@@ -71,7 +69,13 @@ def CoqTaskHandlerFactory(top : 'Top'):
 
                 top.namespace['__task__'] = task
 
-                result = task.run(top)
+                if profile:
+                    prof = cProfile.Profile()
+                    result = prof.runcall(task.run, top)
+                    prof.dump_stats("profile.out")
+                else:
+                    result = task.run(top)
+
                 top.namespace['__result__'] = result
 
                 if task.client not in top.namespace['cache']:
@@ -102,7 +106,8 @@ def CoqTaskHandlerFactory(top : 'Top'):
                         "msg"      : str(err)
                         }
             except Exception as err:
-                top.print(str(err))
+                traceback.print_exc()
+
                 reply = {
                         "error"    : True,
                         "msg"      : str(err)
@@ -133,9 +138,9 @@ def CoqTaskHandlerFactory(top : 'Top'):
 
 
 
-def run_coq_server(port=8081, top=None):
+def run_coq_server(port=8081, top=None, profile=False):
     print('start listening on port %d, press <Ctrl+c> to stop.' % port)
-    http = HTTPServer(('', port), CoqTaskHandlerFactory(top))
+    http = HTTPServer(('', port), CoqTaskHandlerFactory(top, profile))
     thread = threading.Thread(target = http.serve_forever)
     thread.daemon = True
     thread.start()

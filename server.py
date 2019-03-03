@@ -13,9 +13,10 @@ Top.set_default(t)
 # the server works in background, but all the log messages will be displayed in foreground and
 # the tasks will be rendered in the top's global
 noserver = "-noserver" in sys.argv
+profile = "-profile" in sys.argv
 
 if not noserver:
-    server = run_coq_server(top=t)
+    server = run_coq_server(top=t, profile=profile)
 else:
     server = None
 
