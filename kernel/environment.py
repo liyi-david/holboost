@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from itertools import chain
 
 """
 NOTES
@@ -70,11 +71,7 @@ class Environment(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def inds(self):
-        pass
-
-    @abstractmethod
-    def constructors(self):
+    def __iter__(self):
         pass
 
     def rel(self, index):
@@ -205,21 +202,43 @@ class NamedEnvironment(Environment):
                 return var
 
         for name, mutind in self.__mutinds.items():
-            if name.endswith("." + ident):
-                return mutind
-
             for ind in mutind.inds:
-                if ind.name.endswith("." + ident):
+                if ind.name == ident:
                     return ind
 
                 for constructor in ind.constructors:
                     if constructor.name == ident:
                         return constructor
 
+            if name.endswith("." + ident):
+                return mutind
+
         if self.inherited_environment is not None:
             return self.inherited_environment[ident]
         else:
             return None
+
+    def __iter__(self):
+        from .term import Const, Var
+        # iterates all entities including
+        #
+        # - constant
+        # - variable
+        # - rel variable
+        # - inductive
+        #
+        inherited_iter = [] if self.inherited_environment is None else iter(self.inherited_environment)
+        const_iter = map(lambda c: (Const(c.name), c.typ), self.__constants.values())
+        var_iter = map(lambda v: (Var(v.name), v.typ), self.__variables.values())
+        # TODO
+        ind_iter = []
+
+        return chain(
+            const_iter,
+            var_iter,
+            ind_iter,
+            inherited_iter
+            )
 
     def __iadd__(self, env):
         """
@@ -366,6 +385,15 @@ class ContextEnvironment(Environment):
     def __getitem__(self, ident):
         return self.inherited_environment[ident]
 
+    def __iter__(self):
+        inherited_iter = [] if self.inherited_environment is None else iter(self.inherited_environment)
+        # TODO add indexes in inherited_iter
+
+        return chain(
+                [ Rel(0), self.binding.type ],
+                inherited_iter
+                )
+
     def constant(self, name):
         if self.inherited_environment is None:
             return None
@@ -421,7 +449,7 @@ class ContextEnvironment(Environment):
             if self.inherited_environment is not None:
                 return self.inherited_environment.rel(index - 1)
             else:
-                raise KeyError("unbounded variable index %d" % index)
+                raise IndexError("unbounded variable index %d" % index)
 
     def length(self):
         l = 1

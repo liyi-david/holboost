@@ -72,7 +72,9 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
                 if profile:
                     prof = cProfile.Profile()
                     result = prof.runcall(task.run, top)
-                    prof.dump_stats("profile.out")
+
+                    # analyzing stats
+                    top.print_profile(prof)
                 else:
                     result = task.run(top)
 

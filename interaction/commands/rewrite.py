@@ -222,8 +222,9 @@ class RewriteCommand(Command):
         resulted_tactics = []
         for name, formula in formulas:
             top.debug("rewrite", "start working on %s: %s" % (name, str(formula)))
-            resulted_tactics.append(self.rewrite_single_formula(name, formula, top))
 
-        print('a')
+            tac = self.rewrite_single_formula(name, formula, top)
+            if tac is not None:
+                resulted_tactics.append(tac)
 
         return resulted_tactics

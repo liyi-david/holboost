@@ -3,7 +3,7 @@ from kernel.dsl import DSL
 from os.path import isfile
 from sys import exc_info
 
-import traceback
+import traceback, pstats
 
 
 def exec_or_evar(*args):
@@ -63,6 +63,11 @@ class Top:
             return exec_or_evar(cmd, self.namespace, self.debug_namespace)
         else:
             return exec_or_evar(cmd, self.namespace)
+
+    def print_profile(self, p):
+        st = pstats.Stats(p)
+        st.sort_stats('cumtime')
+        st.print_stats(5)
 
     def query(self, name):
         task = None
