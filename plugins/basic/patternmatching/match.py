@@ -76,7 +76,10 @@ def match_at(pattern, term, environment=None, top=None):
         if top is not None and top.debug('match'):
             top.debug("match", 'matching %s in %s' % (pattern, term))
 
-        if isinstance(pattern, Meta):
+        typ_pat = type(pattern)
+        typ_term = type(term)
+
+        if typ_pat == Meta:
             if pattern.index in metavar_matched:
                 if metavar_matched[pattern.index] == term:
                     return
@@ -98,34 +101,40 @@ def match_at(pattern, term, environment=None, top=None):
                         raise MatchFailure(pattern, term)
 
                 metavar_matched[pattern.index] = term
-        elif isinstance(pattern, Alias):
+        elif typ_pat == Alias:
             try_match(pattern.sub_pattern, term)
             alias_matched[pattern.alias] = term
-        elif isinstance(pattern, Cast):
+        elif typ_pat == Cast:
             try_match(pattern.body, term)
-        # for some non-recursive term, we simply need them to be equal
-        elif all_are_same_instances((pattern, term), (Sort, Const, Var, Rel, Construct, Ind)):
-            if pattern != term:
+        elif typ_pat == typ_term:
+
+            # for some non-recursive term, we simply need them to be equal
+            if typ_pat in (Sort, Const, Var, Rel, Construct, Ind):
+                if pattern != term:
+                    raise MatchFailure(pattern, term)
+
+            elif typ_pat in (Lambda, LetIn, Prod):
+                # Liyi: I removed the name checking since I think that is not important
+                # and should not make the matching result different
+                # if pattern.arg_name != term.arg_name:
+                #    raise MatchFailure(pattern, term)
+
+                try_match(pattern.arg_type, term.arg_type)
+                try_match(pattern.body, term.body)
+
+                if typ_pat == LetIn:
+                    try_match(pattern.arg_body, term.arg_body)
+            elif typ_pat == Apply:
+                try_match(pattern.func, term.func)
+
+                if len(pattern.args) != len(term.args):
+                    raise MatchFailure(pattern, term)
+
+                for i in range(len(pattern.args)):
+                    try_match(pattern.args[i], term.args[i])
+            else:
                 raise MatchFailure(pattern, term)
-        elif all_are_same_instances((pattern, term), (Lambda, LetIn, Prod)):
 
-            # Liyi: I removed the name checking since I think that is not important
-            # and should not make the matching result different
-            # if pattern.arg_name != term.arg_name:
-            #    raise MatchFailure(pattern, term)
-
-            try_match(pattern.arg_type, term.arg_type)
-            try_match(pattern.body, term.body)
-            if isinstance(pattern, LetIn):
-                try_match(pattern.arg_body, term.arg_body)
-        elif all_are_same_instances((pattern, term), (Apply)):
-            try_match(pattern.func, term.func)
-
-            if len(pattern.args) != len(term.args):
-                raise MatchFailure(pattern, term)
-
-            for i in range(len(pattern.args)):
-                try_match(pattern.args[i], term.args[i])
         else:
             raise MatchFailure(pattern, term)
 
