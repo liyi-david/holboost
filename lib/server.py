@@ -4,6 +4,7 @@ from time import time
 from sys import stdout
 
 from interaction.formats.json import JsonFormat, JsonConvertError
+from interaction.commands import IdleCommand, ConnectCommand
 from kernel.environment import NamedEnvironment
 
 import threading
@@ -69,7 +70,7 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
 
                 top.namespace['__task__'] = task
 
-                if profile:
+                if profile and task.command not in (IdleCommand, ConnectCommand):
                     prof = cProfile.Profile()
                     result = prof.runcall(task.run, top)
 
