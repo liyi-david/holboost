@@ -78,20 +78,20 @@ def from_rels(outside_context_env, term, top=None):
             return Prod(
                     term.arg_name,
                     generate(environment, term.arg_type),
-                    generate(ContextEnvironment(Binding.from_term(term), environment), term.body_type)
+                    generate(ContextEnvironment(Binding.from_term(term), environment), term.body)
                     )
         elif isinstance(term, Lambda):
             return Lambda(
                     term.arg_name,
                     generate(environment, term.arg_type),
-                    generate(ContextEnvironment(Binding.from_term(term), environment), term.body_type)
+                    generate(ContextEnvironment(Binding.from_term(term), environment), term.body)
                     )
         elif isinstance(term, LetIn):
             return LetIn(
                     term.arg_name,
                     generate(environment, term.arg_type),
                     generate(environment, term.arg_body),
-                    generate(ContextEnvironment(Binding.from_term(term), environment), term.body_type)
+                    generate(ContextEnvironment(Binding.from_term(term), environment), term.body)
                     )
         elif isinstance(term, (Sort, Const, Construct, Ind)):
             return term

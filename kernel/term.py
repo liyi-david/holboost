@@ -606,6 +606,7 @@ class Apply(Term):
 
         self.func = func
         self.args = list(args)
+        # assert len(args) > 0, "cannot create a trivial apply term with no args"
 
     def type(self, environment=None) -> 'Term':
         # if the type of func is A -> B -> C and there are two arguments, then the type of the whole term
