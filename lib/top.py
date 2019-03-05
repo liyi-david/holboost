@@ -53,6 +53,9 @@ class Top:
         print("\x1b[32mHolboost\x1b[0m >>> ", end="", flush=True)
 
     def debug(self, module, *args):
+        if len(args) == 0:
+            return module in self.debug_modules
+
         if module in self.debug_modules:
             print("\r\x1b[43mDebug   MSG \x1b[0m", *args)
             print("\x1b[32mHolboost\x1b[0m >>> ", end="", flush=True)
@@ -67,7 +70,13 @@ class Top:
     def print_profile(self, p):
         st = pstats.Stats(p)
         st.sort_stats('cumtime')
-        st.print_stats(5)
+        print(
+            "========== rendering profiler statistics ==========\n"
+            )
+        st.print_stats(10)
+        self.print(
+            "============= profiler statistics ends ============"
+            )
 
     def query(self, name):
         task = None

@@ -73,7 +73,7 @@ def match_at(pattern, term, environment=None, top=None):
     alias_matched = {}
 
     def try_match(pattern, term):
-        if top is not None:
+        if top is not None and top.debug('match'):
             top.debug("match", 'matching %s in %s' % (pattern, term))
 
         if isinstance(pattern, Meta):

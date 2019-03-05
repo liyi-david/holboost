@@ -130,14 +130,21 @@ class RewriteCommand(Command):
         # it is important to use reversed here, since a pair (a, b, c) is actually constructed as
         # (a, (b, c)) in coq, so first we prove that b, c = b', c' instead of a and a'
         for one_match in reversed(match_result.matches):
-            top.debug("rewrite", "match", one_match)
+            if top.debug("rewrite"):
+                top.debug("rewrite", "match", one_match)
+
             hint = self.get_hint_by_pattern(one_match.pattern)
 
             # TODO: find why the args are reversed???
-            eq_hyp_args = [one_match.metavar_map[i] for i in range(hint.context.length())]
+            if hint.context is None:
+                eq_hyp_args = []
+            else:
+                eq_hyp_args = [one_match.metavar_map[i] for i in range(hint.context.length())]
+
             eq_hyp_args.reverse()
             eq_hyp = Apply(hint.lemma, *eq_hyp_args)
-            top.debug("rewrite", "eq hypothesis: ", eq_hyp.render(self.task))
+            if top.debug("rewrite"):
+                top.debug("rewrite", "eq hypothesis: ", eq_hyp.render(self.task))
 
             # we always assume that type of the proof is ... = ...
             if proof is None:
@@ -189,16 +196,17 @@ class RewriteCommand(Command):
                 Ttuple, a, b, P, proof
                 )
 
-        top.debug_namespace['rewrite_proof'] = partial_proof
+        if top.debug("rewrite"):
+            top.debug_namespace['rewrite_proof'] = partial_proof
 
-        top.debug("rewrite", "Ttuple   : ", Ttuple.render(self.task))
-        top.debug("rewrite", "a        : ", a.render(self.task))
-        top.debug("rewrite", "b        : ", b.render(self.task))
-        top.debug("rewrite", "P        : ", P.render(self.task))
-        top.debug("rewrite", "eq_proof : ", proof.render(self.task))
+            top.debug("rewrite", "Ttuple   : ", Ttuple.render(self.task))
+            top.debug("rewrite", "a        : ", a.render(self.task))
+            top.debug("rewrite", "b        : ", b.render(self.task))
+            top.debug("rewrite", "P        : ", P.render(self.task))
+            top.debug("rewrite", "eq_proof : ", proof.render(self.task))
 
-        top.debug("rewrite", "proof    : ", partial_proof.render(self.task))
-        top.debug("rewrite", "prf type : ", partial_proof.type(self.task).render(self.task))
+            top.debug("rewrite", "proof    : ", partial_proof.render(self.task))
+            top.debug("rewrite", "prf type : ", partial_proof.type(self.task).render(self.task))
 
         _, sideff = partial_proof.check(self.task)
 

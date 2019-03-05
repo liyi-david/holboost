@@ -73,7 +73,9 @@ def from_rels(outside_context_env, term, top=None):
         top = Top.default()
 
     def generate(environment, term):
-        top.debug('pattern', 'from rels', environment, term)
+        if top.debug('pattern'):
+            top.debug('pattern', 'from rels', environment, term)
+
         if isinstance(term, Prod):
             return Prod(
                     term.arg_name,
