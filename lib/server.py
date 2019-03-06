@@ -3,9 +3,9 @@ from urllib.parse import urlparse, parse_qs
 from time import time
 from sys import stdout
 
-from interaction.formats.json import JsonFormat, JsonConvertError
 from interaction.commands import IdleCommand, ConnectCommand
 from kernel.environment import NamedEnvironment
+from kernel.task import Task
 
 import threading
 import traceback
@@ -41,12 +41,12 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
 
             t1 = time()
 
+            # data pre-processing: from string to json
             data = data.decode('utf8')
             parsed_data = json.loads(data)
 
             top.debug("server", "posted data size %d" % len(data))
             top.debug("server", "data pre-processing time cost: %.6f" % (time() - t1))
-
 
             top.namespace['__request__'] = parsed_data
 
@@ -57,7 +57,13 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
 
             try:
                 t1 = time()
-                task = JsonFormat.import_task(parsed_data['content'])
+
+                session_id = None
+                if 'session' in parsed_data:
+                    session_id = parsed_data['session']
+
+                top.debug("server", "session id " + str(session_id))
+                task = Task.from_json(parsed_data['content'])
                 top.debug("server", "task importing time cost: %.6f" % (time() - t1))
                 task.client = parsed_data['client']
                 task.client_addr = self.client_address
@@ -70,7 +76,7 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
 
                 top.namespace['__task__'] = task
 
-                if profile and task.command not in (IdleCommand, ConnectCommand):
+                if profile and type(task.command) not in (IdleCommand, ConnectCommand):
                     prof = cProfile.Profile()
                     result = prof.runcall(task.run, top)
 
@@ -101,12 +107,6 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
                 reply = {
                         "error"    : True,
                         "msg"      : "json decoding failes because %s. for further information please refer to the server log" % str(err)
-                        }
-            except JsonConvertError as err:
-                top.print(str(err))
-                reply = {
-                        "error"    : True,
-                        "msg"      : str(err)
                         }
             except Exception as err:
                 traceback.print_exc()

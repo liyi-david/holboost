@@ -1,4 +1,5 @@
 from .environment import NamedEnvironment, Environment
+
 from time import time
 
 class Task(NamedEnvironment):
@@ -33,6 +34,23 @@ class Task(NamedEnvironment):
     def set_current(self):
         Task.current = self
         Environment.set_external_default(self)
+
+    @classmethod
+    def from_json(cls, json_item):
+        from .term import Term
+        from interaction.commands import Command
+        env = Environment.from_json(json_item)
+
+        task = Task(
+                Term.from_json(json_item['goal']),
+                env.constants,
+                env.variables,
+                env.mutinds,
+                Command.from_json(json_item['command'])
+                )
+
+
+        return task
 
     def run(self, top):
         if self.command is not None:

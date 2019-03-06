@@ -38,7 +38,7 @@ let get_variables env : json =
         let name = Context.Named.Declaration.get_id decl in
         let name = Names.Id.to_string name in
         let typ  = Context.Named.Declaration.get_type decl in
-        let json_context_variable = `Assoc [ ("variable_name", `String name); ("variable_type", (constr2json typ)) ] in
+        let json_context_variable = `Assoc [ ("name", `String name); ("type", (constr2json typ)) ] in
         json_context_variable :: var_list
     end env ~init:[] in
     (`List var_list)
@@ -60,12 +60,12 @@ let get_constants env : json =
             let encode name typ body =
                 let lst_body = match body with
                 | None -> []
-                | Some body -> [ ("constant_body", constr2json body) ]
+                | Some body -> [ ("body", constr2json body) ]
                 in
                 `Assoc (
                     [
-                        ("constant_name", `String name);
-                        ("constant_type", constr2json typ);
+                        ("name", `String name);
+                        ("type", constr2json typ);
                     ] @ lst_body @ [
                         ("is_builtin", `Bool (Hbsync.is_builtin name))
                     ]

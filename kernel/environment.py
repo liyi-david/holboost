@@ -56,6 +56,20 @@ class Environment(metaclass=ABCMeta):
         assert isinstance(env, cls)
         cls.__external_default_environment = env
 
+    @classmethod
+    def from_json(cls, json_item):
+        env = NamedEnvironment()
+        from .declaration import Constant, Variable, MutInductive
+
+        if 'constants' in json_item:
+            env.constants = { c['name'] : Constant.from_json(c) for c in json_item['constants'] }
+        if 'variables' in json_item:
+            env.variables = { c['name'] : Variable.from_json(c) for c in json_item['variables'] }
+        if 'mutinds' in json_item:
+            env.mutinds = { c['name'] : MutInductive.from_json(c) for c in json_item['mutinds'] }
+
+        return env
+
     # ============================ abstract interfaces ========================
 
     @abstractmethod

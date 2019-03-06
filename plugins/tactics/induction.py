@@ -36,7 +36,7 @@ class InductionTactic(Tactic):
             # the full name of the mut-inductive, i.e. Coq.Init.Datatypes.nat
             # however, all the induction theorems are declared with the full name of the
             # corresponding inductive, in other words, we have to generate them ourselves
-            ind = env.mutind(mutind_name)[0].inds[ind_index]
+            ind = env.mutind(mutind_name).inds[ind_index]
             ind_full_segs = mutind_name.split('.')[:-1] + [ind.name]
             ind_full_name = '.'.join(ind_full_segs)
             thm_to_apply = Const(ind_full_name + thm_prefix)
@@ -59,6 +59,12 @@ class InductionTactic(Tactic):
 
                 inner = Apply(c.term())
                 subgoal = Apply(p_hole, inner)
+
+                # we keep this variable in case there is no argument given to inner
+                # then we need to replace the `Apply` term in the original subgoal
+                # to its func (inner.func)
+                original_subgoal = subgoal
+
                 depth = 0
                 while isinstance(ctyp, Prod):
                     if ctyp.arg_type != gf.arg_type:
@@ -75,6 +81,9 @@ class InductionTactic(Tactic):
                         depth += 2
 
                     ctyp = ctyp.body
+
+                if inner.args == []:
+                    original_subgoal.args[0] = inner.func
 
                 subgoals.append(Goal(subgoal, env))
 

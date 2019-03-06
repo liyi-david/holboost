@@ -1,5 +1,8 @@
+from kernel.session import Session
+
 from .command import Command
 from .result import DictResult
+
 
 class ConnectCommand(Command):
 
@@ -11,15 +14,17 @@ class ConnectCommand(Command):
             # create cache
             top.namespace['cache'] = dict()
 
-        top.print('connection from client [ %s ] from [ %s ]' % (
+        sess = Session.alloc()
+        top.print('connection from client [ %s ] from [ %s ], specified session %d' % (
             self.task.client,
-            self.task.client_addr[0]
+            self.task.client_addr[0],
+            sess.ident
             )
         )
 
         # TODO session is important for further parallel optimization
         # here 0 is only a placeholder
-        result = { "session" : 0 }
+        result = { "session" : sess.ident }
 
         if self.task.client_addr[0] in ('127.0.0.1', 'localhost'):
             # the connection comes from a local client

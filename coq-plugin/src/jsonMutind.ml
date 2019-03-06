@@ -68,8 +68,8 @@ let get_one_inductive_body (body: Declarations.one_inductive_body) : json =
         (* extract all constructors *)
         json_constructors := (
             `Assoc [
-                ("constructor_name", `String (Names.Id.to_string (Array.get body.mind_consnames i)));
-                ("constructor_type", (constr2json (Array.get body.mind_user_lc i)))
+                ("name", `String (Names.Id.to_string (Array.get body.mind_consnames i)));
+                ("type", (constr2json (Array.get body.mind_user_lc i)))
             ]
         ) :: !json_constructors
     done;
@@ -77,7 +77,7 @@ let get_one_inductive_body (body: Declarations.one_inductive_body) : json =
     let json_arity_context = get_context body.mind_arity_ctxt in
     let json_arity = get_ind_arity body.mind_arity in
     `Assoc [
-        ("ind_name", `String (Names.Id.to_string body.mind_typename));
+        ("name", `String (Names.Id.to_string body.mind_typename));
         ("arity", json_arity);
         ("context", json_arity_context);
         ("constructors", json_constructors)
@@ -97,7 +97,7 @@ let get_mutinds env : json =
                 let mind_body, _ = mutind in
                 let json_ind_packets = `List (Array.to_list (Array.map get_one_inductive_body mind_body.mind_packets)) in
                 let json_mind = `Assoc [
-                    ("mutind_name", `String mutind_name);
+                    ("name", `String mutind_name);
                     ("inds", json_ind_packets);
                     ("is_builtin", `Bool (Hbsync.is_builtin mutind_name))
                 ] in

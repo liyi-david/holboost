@@ -52,6 +52,10 @@ class Top:
         print("\r\x1b[96mCommand MSG \x1b[0m", *args)
         print("\x1b[32mHolboost\x1b[0m >>> ", end="", flush=True)
 
+    def error(self, name, *args):
+        print('\r\x1b[1;37;41m' + name + '\x1b[0m', *args)
+        print("\x1b[32mHolboost\x1b[0m >>> ", end="", flush=True)
+
     def debug(self, module, *args):
         if len(args) == 0:
             return module in self.debug_modules
@@ -206,10 +210,16 @@ class Top:
         try:
             self.load(".holboostrc", forcePython=True)
             self.print("Loading configurations from .holboostrc.")
+        except FileNotFoundError:
+            self.error("FileNotFound", "configuration file .holboostrc missing")
+
+        try:
             self.load(".holboostrc.local", forcePython=True)
             self.print("Loading configurations from .holboostrc.local.")
         except FileNotFoundError:
             pass
+        except Exception as err:
+            self.error(type(err).__name__, "error in .holboostrc.local")
 
         print("Holboost toploop started.")
         multiline_command = ""
@@ -249,8 +259,8 @@ class Top:
                     # the full stack
                     _, _, tb = exc_info()
                     stack = traceback.extract_tb(tb)
-                    print(
-                            '\x1b[1;37;41m' + type(err).__name__ + '\x1b[0m',
+                    self.error(
+                            type(err).__name__,
                             '@', stack[-1].filename,
                             ', line %3d: ' % stack[-1].lineno, err
                             )

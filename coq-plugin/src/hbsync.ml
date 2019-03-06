@@ -25,9 +25,14 @@ let write_to_temp_file (content:string) : string =
     
 let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (j:json) : json =
     (* we can put here any common fields in the sent messages *)
+    let session = match !sess with
+    | Some sid -> `Int sid
+    | None -> `Null
+    in
     let j = `Assoc [
         ("content", j);
-        ("client", `String "coq")
+        ("client", `String "coq");
+        ("session", session)
     ] in
     let target = match _server, _port with
     | Some _server, Some _port -> Printf.sprintf "%s:%d" _server _port

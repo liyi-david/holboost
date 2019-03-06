@@ -18,6 +18,7 @@ class JsonFormat(Format):
 
     @staticmethod
     def import_term (json_item: 'json'):
+        # TODO remove this function
 
         if json_item == None: return None
 
@@ -78,67 +79,6 @@ class JsonFormat(Format):
                 raise JsonConvertError('json key error %s in %s' % (err, json.dumps(t)))
 
         return convert(json_item)
-
-    @staticmethod
-    def import_command(json_item):
-        return Command.from_json(json_item)
-
-
-    @staticmethod
-    def import_constant(json_item):
-        return Constant(
-                json_item['constant_name'],
-                JsonFormat.import_term(json_item['constant_type']),
-                None if 'constant_body' not in json_item else JsonFormat.import_term(json_item['constant_body']),
-                json_item['is_builtin']
-                )
-
-    @staticmethod
-    def import_mutind(json_item):
-
-        def import_constructor(json_item):
-            return MutInductive.Constructor(
-                    json_item['constructor_name'],
-                    JsonFormat.import_term(json_item['constructor_type'])
-                    )
-
-        def import_ind(json_item):
-            return MutInductive.Inductive.from_json(json_item)
-
-        return MutInductive(
-                json_item['mutind_name'],
-                [ import_ind(ind) for ind in json_item['inds'] ],
-                json_item['is_builtin']
-                )
-
-
-    @staticmethod
-    def import_environment(json_item):
-        env = NamedEnvironment()
-        if 'constants' in json_item:
-            env.constants = { c['constant_name'] : JsonFormat.import_constant(c) for c in json_item['constants'] }
-        if 'variables' in json_item:
-            env.variables = { c['variable_name'] : Constant(c['variable_name'], JsonFormat.import_term(c['variable_type'])) for c in json_item['variables'] }
-        if 'mutinds' in json_item:
-            env.mutinds = { c['mutind_name'] : JsonFormat.import_mutind(c) for c in json_item['mutinds'] }
-
-        return env
-
-
-    @staticmethod
-    def import_task(json_item):
-        env = JsonFormat.import_environment(json_item)
-
-        task = Task(
-                JsonFormat.import_term(json_item['goal']),
-                env.constants,
-                env.variables,
-                env.mutinds,
-                JsonFormat.import_command(json_item['command'])
-                )
-
-
-        return task
 
 
     @staticmethod

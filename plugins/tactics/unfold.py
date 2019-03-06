@@ -12,7 +12,7 @@ class UnfoldTactic(Tactic):
         if isinstance(gf, Apply) and isinstance(gf.func, Const):
             new_goal = Goal(
                     Apply(
-                        g.env().constant(gf.func.name)[0].body,
+                        g.env().constant(gf.func.name).body,
                         *gf.args
                         ),
                     g.env()

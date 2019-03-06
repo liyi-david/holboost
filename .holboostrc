@@ -3,6 +3,7 @@ from kernel.macro import *
 from kernel.proofview import Proofview
 from kernel.environment import *
 from kernel.dsl import DSL
+from kernel.session import Session
 
 from plugins import load_plugins
 from interaction.formats.json import JsonFormat

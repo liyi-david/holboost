@@ -1,29 +1,23 @@
-import threading
-
 class Session:
 
     """ int -> Session """
     sessions = dict()
+    ident_next = 0
 
     @classmethod
-    def get(cls):
-        if threading.get_ident() not in cls.sessions:
-            cls.sessions[threading.get_ident()] = Session()
+    def alloc(cls):
+        ident = cls.ident_next
+        cls.ident_next += 1
+        cls.sessions[ident] = cls(ident)
+        return cls.sessions[ident]
 
-        return cls.sessions[threading.get_ident()]
+    @classmethod
+    def get(cls, ident):
+        return cls.sessions[ident]
 
+    def __init__(self, ident):
+        self.ident = ident
+        self.tasks = []
 
-    def __init__(self, parent: 'Session'=None) -> 'Declaration | Definition':
-        self.threadId = threading.get_ident()
-        self.parent = None
-        self.namespace = dict()
-
-    def __contains__(self, key):
-        return key in self.namespace
-
-    def __get__(self, key):
-        return self.namespace[key]
-
-    def __set__(self, key, value):
-        assert key not in self
-        self.namespace[key] = value
+    def __str__(self):
+        return 'Session %3d with %3d tasks' % (self.ident, len(self.tasks))

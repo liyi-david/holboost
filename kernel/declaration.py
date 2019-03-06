@@ -16,6 +16,15 @@ class Constant:
     def term(self):
         return Const(self.name)
 
+    @classmethod
+    def from_json(cls, json_item):
+        return Constant(
+                json_item['name'],
+                Term.from_json(json_item['type']),
+                None if 'body' not in json_item else Term.from_json(json_item['body']),
+                json_item['is_builtin']
+                )
+
     def render(self, task):
         if self.body is None:
             return "Declaration %s\n\n\t: %s\n" % (self.name, self.type(task))
@@ -32,6 +41,13 @@ class Variable(Constant):
 
     def term(self):
         return Var(self.name)
+
+    @classmethod
+    def from_json(cls, json_item):
+        return Variable(
+                json_item['name'],
+                Term.from_json(json_item['type'])
+                )
 
 
 class MutInductive:
@@ -59,8 +75,8 @@ class MutInductive:
         @classmethod
         def from_json(cls, json_item):
             return cls(
-                    json_item['constructor_name'],
-                    Term.from_json(json_item['constructor_type'])
+                    json_item['name'],
+                    Term.from_json(json_item['type'])
                     )
 
         def type(self, environment=None, context=[]):
@@ -103,7 +119,7 @@ class MutInductive:
                 arity = Term.from_json(json_item['arity']['arity'])
 
             ind = cls(
-                    json_item['ind_name'],
+                    json_item['name'],
                     context,
                     arity,
                     list(map(MutInductive.Constructor.from_json, json_item['constructors']))
@@ -152,3 +168,11 @@ class MutInductive:
 
     def __repr__(self):
         return "<mut-inductive %s with %d inductives>" % (self.name, len(self.inds))
+
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(
+                json_item['name'],
+                [ cls.Inductive.from_json(ind) for ind in json_item['inds'] ],
+                json_item['is_builtin']
+                )
