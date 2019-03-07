@@ -73,10 +73,12 @@ class Top:
 
     def print_profile(self, p):
         st = pstats.Stats(p)
-        st.sort_stats('cumtime')
         print(
             "========== rendering profiler statistics ==========\n"
             )
+        st.sort_stats('cumtime')
+        st.print_stats(10)
+        st.sort_stats('tottime')
         st.print_stats(10)
         self.print(
             "============= profiler statistics ends ============"
