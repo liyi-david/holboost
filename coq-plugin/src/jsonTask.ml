@@ -52,46 +52,49 @@ let get_constants env : json =
     let const_list = Names.Cmap_env.fold begin fun key const const_list ->
         (* key is actually Constant.t *)
         let constant_name = Names.Constant.to_string key in
-        Declbuf.set constant_name (Declbuf.ConstantDecl key);
-        if ((Hbsync.is_builtin constant_name) && !Hbsync.builtin_cached) then begin
-            const_list
-        end
-        else begin
-            let encode name typ body =
-                let lst_body = match body with
-                | None -> []
-                | Some body -> [ ("body", constr2json body) ]
+        if (Declbuf.set constant_name (Declbuf.ConstantDecl key)) then
+            if ((Hbsync.is_builtin constant_name) && !Hbsync.builtin_cached) then begin
+                const_list
+            end
+            else begin
+                let encode name typ body =
+                    let lst_body = match body with
+                    | None -> []
+                    | Some body -> [ ("body", constr2json body) ]
+                    in
+                    `Assoc (
+                        [
+                            ("name", `String name);
+                            ("type", constr2json typ);
+                        ] @ lst_body @ [
+                            ("is_builtin", `Bool (Hbsync.is_builtin name))
+                        ]
+                    )
                 in
-                `Assoc (
-                    [
-                        ("name", `String name);
-                        ("type", constr2json typ);
-                    ] @ lst_body @ [
-                        ("is_builtin", `Bool (Hbsync.is_builtin name))
-                    ]
-                )
-            in
-            let constant_body, _ = const in
-            (
-                match constant_body.const_type, constant_body.const_body with
-                | RegularArity typ, Def const_body_substituted -> begin
-                    encode constant_name typ (Some (Mod_subst.force_constr const_body_substituted))
-                end
-                | RegularArity typ, OpaqueDef opaque -> begin
-                    if !extract_opaqueproof then
-                        (* extract opaque proof is time consuming *)
-                        let body = Future.force (get_proof empty_opaquetab opaque) in
-                        encode constant_name typ (Some body)
-                    else
+                let constant_body, _ = const in
+                (
+                    match constant_body.const_type, constant_body.const_body with
+                    | RegularArity typ, Def const_body_substituted -> begin
+                        encode constant_name typ (Some (Mod_subst.force_constr const_body_substituted))
+                    end
+                    | RegularArity typ, OpaqueDef opaque -> begin
+                        if !extract_opaqueproof then
+                            (* extract opaque proof is time consuming *)
+                            let body = Future.force (get_proof empty_opaquetab opaque) in
+                            encode constant_name typ (Some body)
+                        else
+                            encode constant_name typ None
+                    end
+                    | RegularArity typ, _ -> begin
                         encode constant_name typ None
-                end
-                | RegularArity typ, _ -> begin
-                    encode constant_name typ None
-                end
-                | _ -> raise (ExportFailure "currently we cannot handle template arity constants.")
-            )
-            :: const_list
-        end
+                    end
+                    | _ -> raise (ExportFailure "currently we cannot handle template arity constants.")
+                )
+                :: const_list
+            end
+        else
+            (* if declbuf.set returns false, then we do not have to consider this constant *)
+            const_list
     end
     global.env_constants [] in
     `List const_list

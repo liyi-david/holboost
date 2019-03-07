@@ -91,21 +91,24 @@ let get_mutinds env : json =
     let json_list = Names.Mindmap_env.fold begin fun key mutind json_list ->
         let mutind_name = Names.MutInd.to_string key in
         (*Feedback.msg_info (Pp.str mutind_name);*)
-        Declbuf.set mutind_name (Declbuf.MutindDecl key);
-        if (Hbsync.is_builtin mutind_name) && !Hbsync.builtin_cached then json_list else begin
-            try
-                let mind_body, _ = mutind in
-                let json_ind_packets = `List (Array.to_list (Array.map get_one_inductive_body mind_body.mind_packets)) in
-                let json_mind = `Assoc [
-                    ("name", `String mutind_name);
-                    ("inds", json_ind_packets);
-                    ("is_builtin", `Bool (Hbsync.is_builtin mutind_name))
-                ] in
-                json_mind :: json_list
-            with (Unimplemented msg) ->
-                Feedback.msg_info Pp.(str "error! " ++ str msg);
-                json_list
-        end
+        if Declbuf.set mutind_name (Declbuf.MutindDecl key) then
+            if (Hbsync.is_builtin mutind_name) && !Hbsync.builtin_cached then json_list else begin
+                try
+                    let mind_body, _ = mutind in
+                    let json_ind_packets = `List (Array.to_list (Array.map get_one_inductive_body mind_body.mind_packets)) in
+                    let json_mind = `Assoc [
+                        ("name", `String mutind_name);
+                        ("inds", json_ind_packets);
+                        ("is_builtin", `Bool (Hbsync.is_builtin mutind_name))
+                    ] in
+                    json_mind :: json_list
+                with (Unimplemented msg) ->
+                    Feedback.msg_info Pp.(str "error! " ++ str msg);
+                    json_list
+            end
+        else
+            (* when declbuf.set returns false, we do not need to export it caused it is stored in the backend *)
+            json_list
     end global.env_inductives [] in
     `List json_list
 

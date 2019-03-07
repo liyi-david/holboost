@@ -5,6 +5,7 @@ from sys import stdout
 
 from interaction.commands import IdleCommand, ConnectCommand
 from kernel.environment import NamedEnvironment
+from kernel.session import Session
 from kernel.task import Task
 
 import threading
@@ -71,10 +72,13 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
                 top.print(task)
 
                 # merge buffered builtin declarations with the task
-                if task.client in top.namespace['cache']:
-                    task.inherited_environment = top.namespace['cache'][task.client]
-
-                top.namespace['__task__'] = task
+                # NOTE this feature has been moved to the ConnectCommand
+                # if task.client in top.namespace['cache']:
+                #     task.inherited_environment = top.namespace['cache'][task.client]
+                if session_id is not None:
+                    session = Session.get(session_id)
+                    task.inherited_environment = session.task
+                    session.task = task
 
                 if profile and type(task.command) not in (IdleCommand, ConnectCommand):
                     prof = cProfile.Profile()

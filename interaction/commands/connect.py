@@ -22,8 +22,11 @@ class ConnectCommand(Command):
             )
         )
 
-        # TODO session is important for further parallel optimization
-        # here 0 is only a placeholder
+        # session id is used to maintain and inherit task content
+        if self.task.client in top.namespace['cache']:
+            self.task.inherited_environment = top.namespace['cache'][self.task.client]
+
+        sess.task = self.task
         result = { "session" : sess.ident }
 
         if self.task.client_addr[0] in ('127.0.0.1', 'localhost'):

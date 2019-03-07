@@ -1,5 +1,8 @@
-from .command import Command
 from sys import stdout
+
+from kernel.session import Session
+from .command import Command
+
 
 class RunCommand(Command):
     """
@@ -22,7 +25,7 @@ class RunCommand(Command):
             return msg
 
         try:
-            top.run(self.cmd)
+            top.run(self.cmd, { '__task__': self.task })
             return "successfully finished."
         except Exception as err:
             from traceback import print_exc

@@ -3,9 +3,7 @@
 open Ltac_plugin
 open Stdarg
 open Genarg
-open Extraargs
 
-open JsonTask
 open Hbtactics
 
 DECLARE PLUGIN "holboost"
@@ -24,7 +22,7 @@ TACTIC EXTEND boom
 | [ "boom" ] -> [
     JsonTask.get_task_and_then begin
         fun s ->
-            let resp = Hbsync.(post_json s) in
+            let _ = Hbsync.(post_json s) in
             Tacticals.New.tclIDTAC
     end
 ] 

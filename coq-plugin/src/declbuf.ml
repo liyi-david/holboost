@@ -16,13 +16,19 @@ module DeclBuf = Map.Make(String)
 
 let buf : decl DeclBuf.t ref = ref DeclBuf.empty
 
-let set (name: string) (declaration: decl) : unit =
+
+(* result of set indicates whether the declaration is succesfully
+ * put into the buf. if it returns false then it already exists
+ *)
+let set (name: string) (declaration: decl) : bool =
     if DeclBuf.mem name (!buf) then
         (* FIXME check with the correctness *)
         (* we do not replace existing items in the buffer *)
-        ()
-    else
-        buf := DeclBuf.add name declaration (!buf)
+        false
+    else begin
+        buf := DeclBuf.add name declaration (!buf);
+        true
+    end
 
 let get (name: string) : decl option =
     try

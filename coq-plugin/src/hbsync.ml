@@ -71,6 +71,23 @@ let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (
     end;
     json_resp
 
+let disconnect () : unit =
+    let disconn_msg = `Assoc [
+        ("goal", `Null);
+        ("constants", `Assoc []);
+        ("mutinds", `Assoc []);
+        ("variables", `Assoc []);
+        ("command", `Assoc [
+            ("name", `String "disconnect");
+            ("session", match !sess with Some s -> `Int s | None -> `Null)
+        ])
+    ] in
+    try
+        let _ = raw_post_json disconn_msg in
+        (* currently we do not care the response of disconnecting *)
+        Feedback.msg_info Pp.(str "Disconnecting holboost session.")
+    with _ ->
+        Feedback.msg_info Pp.(str "Disconnecting holboost session failed.")
 
 let try_connect (_server: string) (_port: int) : unit =
     let conn_msg = `Assoc [
@@ -97,6 +114,7 @@ let try_connect (_server: string) (_port: int) : unit =
                 server := _server;
                 port := _port;
                 Printf.printf "successfully connected.\n";
+                at_exit disconnect;
         with
             _ -> Printf.printf "failed.\n"
             
