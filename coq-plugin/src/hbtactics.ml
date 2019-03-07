@@ -99,7 +99,7 @@ let boom_autorewrite l extra_cmd =
                             let sigma_new = Evd.add_constraints sigma ucs in
                             let sigma_new = Evd.fix_undefined_variables sigma_new in
                             let target = (curr_item |> member "target" |> to_string) in
-                            Debug.debug "autorewrite" Printer.(pr_econstr ec);
+                            Hbdebug.debug "autorewrite" Printer.(pr_econstr ec);
                             let tac = if String.equal target "__goal__" then
                                 Proofview.tclTHEN
                                     (Proofview.Unsafe.tclEVARSADVANCE sigma_new)

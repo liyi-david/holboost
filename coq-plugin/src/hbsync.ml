@@ -1,9 +1,11 @@
 open Yojson.Basic
 
-let sess : int option ref = ref None
-let server : string ref = ref ""
-let port : int ref = ref 0
-let builtin_cached : bool ref = ref false
+let sess            : int option ref    = ref None
+let server          : string ref        = ref ""
+let islocalhost     : bool ref          = ref false
+let port            : int ref           = ref 0
+let builtin_cached  : bool ref          = ref false
+
 
 exception SyncFailure
 
@@ -47,8 +49,12 @@ let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (
     let s = to_string j in
     let temp_file = write_to_temp_file s in
     Hbprofile.profiling_step "sending request";
-    let req_cmd = Printf.sprintf "curl -s http://%s/%s --data @%s" target temp_file temp_file in
-    Debug.debug "hbsync" Pp.(str req_cmd);
+    let req_cmd = if !islocalhost then
+        Printf.sprintf "curl -s http://%s/%s --data a=b" target temp_file
+    else
+        Printf.sprintf "curl -s http://%s/%s --data @%s" target temp_file temp_file
+    in
+    Hbdebug.debug "hbsync" Pp.(str req_cmd);
     let ic = Unix.open_process_in req_cmd in
     let all_input = ref "" in begin
         try
@@ -103,8 +109,8 @@ let try_connect (_server: string) (_port: int) : unit =
     | Some _ -> ()
     | None -> begin
         Printf.printf "trying to connect %s: %d ... " _server _port;
-        let resp = raw_post_json ~_server:(Some _server) ~_port:(Some _port) conn_msg in
         try
+            let resp = raw_post_json ~_server:(Some _server) ~_port:(Some _port) conn_msg in
             let json_resp = resp in
             let open Yojson.Basic.Util in
             if (json_resp |> member "error" |> to_bool) then
@@ -113,6 +119,7 @@ let try_connect (_server: string) (_port: int) : unit =
                 sess := Some (json_resp |> member "feedback" |> member "session" |> to_int);
                 server := _server;
                 port := _port;
+                islocalhost := (String.equal _server "localhost") || (String.equal _server "127.0.0.1");
                 Printf.printf "successfully connected.\n";
                 at_exit disconnect;
         with
@@ -127,9 +134,7 @@ let init ?(server: string option = None) ?(port: int option = None) (_: unit): u
         Feedback.msg_info Pp.(str "Initializing Holboost connection ...");
         match server, port with
         | Some server, Some port -> try_connect server port
-        | _ -> ()
-        ;
-        try_connect "127.0.0.1" 8081;
+        | _ -> try_connect "127.0.0.1" 8081
         (* TODO establish a default remote holboost server *)
     end
 

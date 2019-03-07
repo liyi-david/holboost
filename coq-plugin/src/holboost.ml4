@@ -50,12 +50,12 @@ END;;
 
 VERNAC COMMAND EXTEND Boom_control_flags CLASSIFIED AS QUERY
 | [ "Boom" "Debug" "On" ] -> [
-    let open Debug in
+    let open Hbdebug in
     debug_flag := true;
     Feedback.msg_info Pp.(str "holboost debug information activated.")
     ]
 | [ "Boom" "Debug" "Off" ] -> [
-    let open Debug in
+    let open Hbdebug in
     debug_flag := false;
     Feedback.msg_info Pp.(str "holboost debug information deactivated.")
     ]
@@ -137,8 +137,8 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
                         Not_found -> Feedback.msg_info Pp.(str "feedback missing")
         end
     ]
-    | [ "Boom" "Print" "Env" ] -> [ Feedback.msg_info (Debug.pr_current_environ ()) ]
-    | [ "Boom" "Print" "Sigma" ] -> [ Feedback.msg_info (Debug.pr_sigma ()) ]
+    | [ "Boom" "Print" "Env" ] -> [ Feedback.msg_info (Hbdebug.pr_current_environ ()) ]
+    | [ "Boom" "Print" "Sigma" ] -> [ Feedback.msg_info (Hbdebug.pr_sigma ()) ]
     | [ "Boom" "Print" "Universes" ] -> [
         let sigma_opt, env = 
             try
@@ -148,11 +148,11 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
                 _ -> None, Global.env ()
         in
         let univs = Environ.universes env in
-        Feedback.msg_info (Debug.pr_ugraph univs);
+        Feedback.msg_info (Hbdebug.pr_ugraph univs);
         match sigma_opt with
         | Some sigma ->
             let ustate = Evd.evar_universe_context sigma in
-            Feedback.msg_info (Debug.pr_ustate ustate)
+            Feedback.msg_info (Hbdebug.pr_ustate ustate)
         | None -> ()
 
     ]

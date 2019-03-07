@@ -7,7 +7,7 @@ src/hbcommon.ml
 src/hbprofile.ml
 src/hbtactics.ml
 src/declbuf.ml
-src/debug.ml
+src/hbdebug.ml
 src/jsonUniv.ml
 src/jsonConstr.ml
 src/hbsync.ml
