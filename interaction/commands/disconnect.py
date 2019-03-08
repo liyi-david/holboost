@@ -11,7 +11,7 @@ class DisconnectCommand(Command):
 
     def run(self, top):
         Session.free(self.session_id)
-        top.print("session %d is disconnected is disconnected." % self.session_id)
+        top.print("session %d is disconnected." % self.session_id)
         return None
 
     @classmethod

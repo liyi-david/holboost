@@ -3,7 +3,7 @@ from urllib.parse import urlparse, parse_qs
 from time import time
 from sys import stdout
 
-from interaction.commands import IdleCommand, ConnectCommand
+from interaction.commands import IdleCommand, ConnectCommand, DisconnectCommand, RunCommand
 from kernel.environment import NamedEnvironment
 from kernel.session import Session
 from kernel.task import Task
@@ -14,40 +14,42 @@ import cProfile
 
 import json
 
+
+threshold = 0.1
+
+
 def CoqTaskHandlerFactory(top : 'Top', profile : bool):
     # to generate CoqTaskHandlers with arguments
 
     class CoqTaskHandler(BaseHTTPRequestHandler):
 
-        total_handled_tasks = 0
-        total_time_cost = 0
-
         def do_POST(self):
 
+            top.debug("server", "=" * 80)
             t0 = time()
 
             if self.client_address[0] in ('localhost', '127.0.0.1'):
                 # when the request comes from localhost, we perfer reading the task
                 # from a file on the disk
                 tmp_filename = self.path[1:]
-                with open(tmp_filename, 'rb') as f:
+                with open(tmp_filename, 'r') as f:
                     data = f.read()
             else:
                 # FIXME rfile.read could be extremely slow due to a signal-waiting issue
                 # this is still not clear for me, but currently we only consider local
                 # requests
                 data = self.rfile.read(int(self.headers['content-length']))
-
-            top.debug("server", "data reading time cost: %.6f" % (time() - t0))
+                data = data.decode('utf8')
 
             t1 = time()
 
             # data pre-processing: from string to json
-            data = data.decode('utf8')
             parsed_data = json.loads(data)
 
-            top.debug("server", "posted data size %d" % len(data))
-            top.debug("server", "data pre-processing time cost: %.6f" % (time() - t1))
+            data_preprocessing_time = time() - t1
+            if data_preprocessing_time > threshold:
+                top.debug("server", "posted data size %d" % len(data))
+                top.debug("server", "data pre-processing time cost: %.6f" % (time() - t1))
 
             top.namespace['__request__'] = parsed_data
 
@@ -65,7 +67,12 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
 
                 top.debug("server", "session id " + str(session_id))
                 task = Task.from_json(parsed_data['content'])
-                top.debug("server", "task importing time cost: %.6f" % (time() - t1))
+
+                task_importing_time = time() - t1
+
+                if task_importing_time > threshold:
+                    top.debug("server", "task importing time cost: %.6f" % task_importing_time)
+
                 task.client = parsed_data['client']
                 task.client_addr = self.client_address
 
@@ -80,7 +87,7 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
                     task.inherited_environment = session.task
                     session.task = task
 
-                if profile and type(task.command) not in (IdleCommand, ConnectCommand):
+                if profile and type(task.command) not in (IdleCommand, ConnectCommand, DisconnectCommand, RunCommand):
                     prof = cProfile.Profile()
                     result = prof.runcall(task.run, top)
 
@@ -129,13 +136,8 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
             self.wfile.write(json.dumps(reply).encode('utf8'))
 
             time_cost = time() - t0
-            json_time_cost = time() - t
-            self.total_time_cost += time_cost
-            self.total_handled_tasks += 1
 
-            top.debug("server", "json encoding time cost : %.6f" % json_time_cost)
-            top.debug("server", "task time cost : %.6f" % time_cost)
-            top.debug("server", "average task time cost : %.6f" % (self.total_time_cost / self.total_handled_tasks))
+            top.debug("server", "total task time cost : %.6f" % time_cost)
 
 
         def log_message(self, format, *args):

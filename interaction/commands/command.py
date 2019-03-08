@@ -13,6 +13,7 @@ class Command(abc.ABC):
         assert cls == Command, 'you must rewrite from_json in %s' % str(cls)
 
         if json_item is None:
+            from .idle import IdleCommand
             return IdleCommand()
         else:
             submodule = json_item['name'].strip()
