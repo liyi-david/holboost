@@ -4,6 +4,7 @@ Require Import Holboost.plugin.
 Open Scope Z_scope.
 
 Definition hundred := 100.
+Boom ExtractConstantBody On.
 
 Boom Print hundred.
 Boom Remote "__task__['hundred'].body.autofold()".

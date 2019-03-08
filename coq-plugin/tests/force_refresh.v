@@ -1,9 +1,10 @@
 Require Import Holboost.plugin.
+Require Import ZArith.
 
 Boom Enable OpaqueProofExtraction.
 
 Boom Refresh.
 
 Boom Print min_l.
-(* FIXME *)
-(* Boom Remote "assert __task__['min_l'].body is not None, 'failed to extract from opaque proof min_l.'". *)
+Boom Refresh.
+Boom Remote "del cache['coq']".

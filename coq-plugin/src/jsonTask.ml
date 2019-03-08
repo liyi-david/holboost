@@ -8,6 +8,7 @@ exception ExportFailure of string
 
 (* some flag variables *)
 let extract_opaqueproof : bool ref = ref false
+let extract_constbody : bool ref = ref false
 
 
 let get_rewrite_hints (dbs: string list) : json =
@@ -58,9 +59,13 @@ let get_constants env : json =
             end
             else begin
                 let encode name typ body =
-                    let lst_body = match body with
-                    | None -> []
-                    | Some body -> [ ("body", constr2json body) ]
+                    let lst_body = if !extract_constbody then begin
+                        match body with
+                        | None -> []
+                        | Some body -> [ ("body", constr2json body) ]
+                    end
+                    else
+                        []
                     in
                     `Assoc (
                         [

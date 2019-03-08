@@ -46,6 +46,8 @@ END;;
 VERNAC COMMAND EXTEND Boom_flags CLASSIFIED AS QUERY
 | [ "Boom" "Enable" "OpaqueProofExtraction" ] -> [ JsonTask.extract_opaqueproof := true; ]
 | [ "Boom" "Disable" "OpaqueProofExtraction" ] -> [ JsonTask.extract_opaqueproof := false; ]
+| [ "Boom" "ExtractConstantBody" "On" ] -> [ JsonTask.extract_constbody := true; ]
+| [ "Boom" "ExtractConstantBody" "Off" ] -> [ JsonTask.extract_constbody := false; ]
 END;;
 
 VERNAC COMMAND EXTEND Boom_control_flags CLASSIFIED AS QUERY

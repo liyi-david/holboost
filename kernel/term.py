@@ -193,9 +193,9 @@ class Term(abc.ABC):
 
 
 class SortEnum(enum.Enum):
-    prop = 'Prop'
-    set  = 'Set'
-    type = 'Type'
+    prop = 'prop'
+    set  = 'set'
+    type = 'type'
 
 
 class Sort(Term):
@@ -642,7 +642,7 @@ class Apply(Term):
                 """
                 side_effects.update(Cast(arg, 0, typ.arg_type).side_effects(env))
 
-                env = ContextEnvironment(Binding(None, arg, None), env)
+                env = ContextEnvironment(Binding(typ.arg_name, arg, None), env)
                 typ = typ.body
             else:
                 raise TypingUnclosedError("cannot apply %s to %s" % (typ.render(environment), arg.render(environment)))

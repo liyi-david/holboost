@@ -176,16 +176,19 @@ class RewriteCommand(Command):
 
         # this maps id of a sub-term to a match result (if exists)
         def replace(context_len, term):
+            index = match_result.index_by_matched(term)
+            if index is not None:
+                if len(match_result.matches) > 0:
+                    return tuple_nth(Rel(context_len), index, Ttuple)
+                else:
+                    return Rel(context_len)
+
             subterms = term.subterms()
             for i in range(len(subterms)):
-                index = match_result.index_by_matched(subterms[i])
-                if index is not None:
-                    subterms[i] = tuple_nth(Rel(context_len), index, Ttuple)
-                else:
-                    subterms[i] = replace(
-                            context_len + (1 if isinstance(term, ContextTerm) else 0),
-                            subterms[i]
-                            )
+                subterms[i] = replace(
+                        context_len + (1 if isinstance(term, ContextTerm) else 0),
+                        subterms[i]
+                        )
 
             return term.subterms_subst(subterms)
 

@@ -138,7 +138,8 @@ class Universe:
             elif l in (NativeLevels.Set(), NativeLevels.Prop()):
                 if r in (NativeLevels.Set(), NativeLevels.Prop()):
                     if offl > offr:
-                        raise UniverseInconsistencyError("%s, %s" % (self, univ))
+                        # raise UniverseInconsistencyError("%s, %s" % (self, univ))
+                        pass
                     else:
                         pass
                 else:

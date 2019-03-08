@@ -1,5 +1,7 @@
 Require Import Holboost.plugin.
 Boom Profiling On.
+Boom Refresh.
+Boom ExtractConstantBody On.
 
 Inductive I : Type := i1 : Type -> I.
 Variable fT : Type -> Type.

@@ -86,7 +86,7 @@ class JsonFormat(Format):
 
         def convert(term):
             if isinstance(term, Sort):
-                return { "type": "sort", "sort": term.sort.value, "univ": term.sort.univ.to_json() }
+                return { "type": "sort", "sort": term.sort.value, "univ": None if term.univ is None else term.univ.to_json() }
             elif isinstance(term, Rel):
                 return { "type": "rel", "index": term.index }
             elif isinstance(term, Var):
