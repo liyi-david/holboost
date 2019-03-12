@@ -119,6 +119,11 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
                         "error"    : True,
                         "msg"      : "json decoding failes because %s. for further information please refer to the server log" % str(err)
                         }
+            except Session.SessionNotFoundError as err:
+                reply = {
+                        "error"    : True,
+                        "msg"      : "session lost"
+                        }
             except Exception as err:
                 traceback.print_exc()
 

@@ -4,6 +4,8 @@ class Session:
     sessions = dict()
     ident_next = 0
 
+    class SessionNotFoundError(Exception): pass
+
     @classmethod
     def alloc(cls):
         ident = cls.ident_next
@@ -18,6 +20,9 @@ class Session:
 
     @classmethod
     def get(cls, ident):
+        if ident not in cls.sessions:
+            raise cls.SessionNotFoundError
+
         return cls.sessions[ident]
 
     def __init__(self, ident):

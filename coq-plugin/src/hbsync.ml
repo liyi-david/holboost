@@ -70,6 +70,10 @@ let raw_post_json ?(_server: string option = None) ?(_port: int option = None) (
         let open Yojson.Basic.Util in
         if (json_resp |> member "error" |> to_bool) then begin
             Feedback.msg_info Pp.(str "fatal error: " ++ str (json_resp |> member "msg" |> to_string));
+            if String.equal (json_resp |> member "msg" |> to_string) "session lost" then
+                sess := None
+            else
+                ();
             raise SyncFailure
         end
         else
@@ -139,4 +143,5 @@ let init ?(server: string option = None) ?(port: int option = None) (_: unit): u
     end
 
 let post_json ?(_server: string option = None) ?(_port: int option = None) (j:json) : json =
+    init ~server:_server ~port:_port ();
     raw_post_json ~_server:_server ~_port:_port j
