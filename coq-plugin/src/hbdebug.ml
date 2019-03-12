@@ -74,8 +74,14 @@ let pr_sigma () : Pp.std_ppcmds =
     let sigma, _ = Pfedit.get_current_goal_context () in
     let open Pp in
     let count = ref 0 in
-    let cmd = Evd.fold begin fun sigma info cmd ->
+    let cmd = Evd.fold begin fun evar info cmd ->
         count := !count + 1;
-        cmd
+        (
+            try
+                (str Printf.(sprintf "[%d]" (Evar.repr evar))) ++ (Printer.pr_evar sigma (evar, info)) ++ str "\n"
+            with Not_found ->
+                str "not_found" ++ str "\n"
+        ) ++ cmd
     end sigma (str "") in
-    str (Printf.sprintf "evar map contains %d existential variables" (!count))
+    str (Printf.sprintf "evar map contains %d existential variables: \n" (!count)) ++
+    cmd

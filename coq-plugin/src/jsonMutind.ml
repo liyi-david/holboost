@@ -30,7 +30,7 @@ let get_context (context: Context.Rel.t) : json =
                 in
                 `Assoc [
                     ("name", json_name);
-                    ("type", constr2json typ);
+                    ("type", constr2json Evd.empty typ);
                 ] :: lst_context
         (* | LocalDef _ -> lst_context *)
         | _ -> raise (Hbcommon.SerializingFailure "cannot serialize the context of inductives.")
@@ -43,7 +43,7 @@ let get_ind_arity (arity: Declarations.inductive_arity) : json =
     | RegularArity rarity -> 
             `Assoc [
                 ("type", `String "regular");
-                ("arity", constr2json rarity.mind_user_arity);
+                ("arity", constr2json Evd.empty rarity.mind_user_arity);
             ]
     | TemplateArity tarity ->
             (* a template arity is a technique to support template universe polymorphism,
@@ -53,7 +53,7 @@ let get_ind_arity (arity: Declarations.inductive_arity) : json =
              * *)
             `Assoc [
                 ("type", `String "template");
-                ("arity", constr2json (mk_template_arity tarity.template_param_levels))
+                ("arity", constr2json Evd.empty (mk_template_arity tarity.template_param_levels))
             ]
 
 let get_one_inductive_body (body: Declarations.one_inductive_body) : json =
@@ -69,7 +69,7 @@ let get_one_inductive_body (body: Declarations.one_inductive_body) : json =
         json_constructors := (
             `Assoc [
                 ("name", `String (Names.Id.to_string (Array.get body.mind_consnames i)));
-                ("type", (constr2json (Array.get body.mind_user_lc i)))
+                ("type", (constr2json Evd.empty (Array.get body.mind_user_lc i)))
             ]
         ) :: !json_constructors
     done;

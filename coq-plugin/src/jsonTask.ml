@@ -19,9 +19,8 @@ let get_rewrite_hints (dbs: string list) : json =
             let json_rule =
                 `Assoc [
                     ("node", `String "rewrite_rule");
-                    ("type", (constr2json rule.rew_type));
-                    ("pattern", (constr2json rule.rew_pat));
-                    ("lemma", (constr2json rule.rew_lemma));
+                    ("type", (constr2json Evd.empty rule.rew_type));
+                    ("lemma", (constr2json Evd.empty rule.rew_lemma));
                     ("left2right", `Bool rule.rew_l2r)
                 ]
             in
@@ -39,7 +38,7 @@ let get_variables env : json =
         let name = Context.Named.Declaration.get_id decl in
         let name = Names.Id.to_string name in
         let typ  = Context.Named.Declaration.get_type decl in
-        let json_context_variable = `Assoc [ ("name", `String name); ("type", (constr2json typ)) ] in
+        let json_context_variable = `Assoc [ ("name", `String name); ("type", (constr2json Evd.empty typ)) ] in
         json_context_variable :: var_list
     end env ~init:[] in
     (`List var_list)
@@ -62,7 +61,7 @@ let get_constants env : json =
                     let lst_body = if !extract_constbody then begin
                         match body with
                         | None -> []
-                        | Some body -> [ ("body", constr2json body) ]
+                        | Some body -> [ ("body", constr2json Evd.empty body) ]
                     end
                     else
                         []
@@ -70,7 +69,7 @@ let get_constants env : json =
                     `Assoc (
                         [
                             ("name", `String name);
-                            ("type", constr2json typ);
+                            ("type", constr2json Evd.empty typ);
                         ] @ lst_body @ [
                             ("is_builtin", `Bool (Hbsync.is_builtin name))
                         ]
@@ -116,7 +115,7 @@ let get_task_and_then ?(cmd:json = `Null) (hook: json -> unit Proofview.tactic) 
         let env = Proofview.Goal.env gl in
         let _ = Proofview.Goal.sigma gl in
         let goal_concl = Proofview.Goal.concl gl in
-        let json_goal_concl = JsonConstr.constr2json (EConstr.Unsafe.to_constr goal_concl) in
+        let json_goal_concl = JsonConstr.constr2json Evd.empty (EConstr.Unsafe.to_constr goal_concl) in
         let json_constants = get_constants env in
         let json_variables = get_variables env in
         let json_mutinds = get_mutinds env in

@@ -11,20 +11,20 @@ let json_of_nullable_name (name: Names.Name.t) : json =
     | Names.Name.Anonymous -> `Null
     | Names.Name.Name id -> `String (Names.Id.to_string id)
 
-let constr2json (c: Constr.t) : json =
+let constr2json (sigma: Evd.evar_map) (c: Constr.t) : json =
     let rec convert (c: Constr.t) : json = 
         let open Constr in
-        `Assoc begin
+        `List begin
             match (kind c) with
-            | Rel index ->  [ ("type", `String "rel"); ("index", `Int (index - 1)) ] 
-            | Var id -> [ ("type", `String "var"); ("name", `String (Names.Id.to_string id)) ]
-            | Meta index -> [ ("type", `String "meta"); ("name", `Int index) ]
-            (* FIXME Evar *)
+            | Rel index -> [ `String "rel"; `Int (index - 1) ] 
+            | Var id -> [ `String "var"; `String (Names.Id.to_string id) ]
+            | Meta index -> [ `String "meta"; `Int index ]
             | Evar (index, arr) ->
+                    let open Evd in
+                    let _ = find sigma index in
                     [
-                        ("type", `String "evar");
-                        ("index", `Int (Evar.repr index));
-                        ("constrs", `List Array.(to_list (map convert arr)))
+                        `String "evar";
+                        `Int (Evar.repr index);
                     ]
             | Sort sort ->
                     let comment = ref "" in
@@ -34,10 +34,10 @@ let constr2json (c: Constr.t) : json =
                         | Sorts.Type univ -> "type", Some univ
                     in
                     [
-                        ("type", `String "sort");
-                        ("sort", `String sort_name);
-                        ("univ", JsonUniv.universe_export sort_univ);
-                        ("comment", `String !comment);
+                        `String "sort";
+                        `String sort_name;
+                        JsonUniv.universe_export sort_univ;
+                        `String !comment;
                     ]
             | Cast (c, kind, types) ->
                     let hash_kind = match kind with
@@ -47,53 +47,53 @@ let constr2json (c: Constr.t) : json =
                     | REVERTcast -> 3
                     in
                     [
-                        ("type", `String "cast");
-                        ("cast_kind", `Int hash_kind);
-                        ("body", (convert c));
-                        ("guaranteed_type", (convert types))
+                        `String "cast";
+                        `Int hash_kind;
+                        (convert c);
+                        (convert types)
                     ]
             | Prod (arg_name, arg_type, body) ->
                     [
-                        ("type", `String "prod");
-                        ("arg_name", (json_of_nullable_name arg_name));
-                        ("arg_type", (convert arg_type));
-                        ("body", (convert body))
+                        `String "prod";
+                        (json_of_nullable_name arg_name);
+                        (convert arg_type);
+                        (convert body)
                     ]
             | Lambda (arg_name, arg_type, body) ->
                     [
-                        ("type", `String "lambda");
-                        ("arg_name", (json_of_nullable_name arg_name));
-                        ("arg_type", (convert arg_type));
-                        ("body", (convert body))
+                        `String "lambda";
+                        (json_of_nullable_name arg_name);
+                        (convert arg_type);
+                        (convert body)
                     ]
             | LetIn (arg_name, arg_type, arg_body, body) ->
                     [
-                        ("type", `String "lambda");
-                        ("arg_name", (json_of_nullable_name arg_name));
-                        ("arg_type", (convert arg_type));
-                        ("arg_body", (convert arg_body));
-                        ("body", (convert body))
+                        `String "lambda";
+                        (json_of_nullable_name arg_name);
+                        (convert arg_type);
+                        (convert arg_body);
+                        (convert body)
                     ]
             | App (func, args) ->
                     [
-                        ("type", `String "app");
-                        ("func", (convert func));
-                        ("args", `List Array.(to_list (map begin fun arg -> (convert arg) end args)))
+                        `String "app";
+                        (convert func);
+                        `List Array.(to_list (map begin fun arg -> (convert arg) end args))
                     ]
             (* FIXME Universe is currently ignored *)
             | Const (const, univ_inst) ->
                     let const_name = (Names.Constant.to_string const) in
                     [
-                        ("type", `String "const");
-                        ("name", `String const_name);
-                        ("univ_inst", JsonUniv.universe_inst_export univ_inst)
+                        `String "const";
+                        `String const_name;
+                        JsonUniv.universe_inst_export univ_inst
                     ]
             | Ind ((ind, index), univ_inst) ->
                     [
-                        ("type", `String "ind");
-                        ("mutind_name", `String (Names.MutInd.to_string ind));
-                        ("ind_index", `Int index);
-                        ("univ_inst", JsonUniv.universe_inst_export univ_inst)
+                        `String "ind";
+                        `String (Names.MutInd.to_string ind);
+                        `Int index;
+                        JsonUniv.universe_inst_export univ_inst
                     ]
             | Construct (((ind, index), constructor_index), univ_inst) ->
                     (*
@@ -102,11 +102,11 @@ let constr2json (c: Constr.t) : json =
                      * start from 0
                      *)
                     [
-                        ("type", `String "construct");
-                        ("mutind_name", `String (Names.MutInd.to_string ind));
-                        ("ind_index", `Int index);
-                        ("constructor_index", `Int (constructor_index - 1));
-                        ("univ_inst", JsonUniv.universe_inst_export univ_inst)
+                        `String "construct";
+                        `String (Names.MutInd.to_string ind);
+                        `Int index;
+                        `Int (constructor_index - 1);
+                        JsonUniv.universe_inst_export univ_inst
                     ]
             (* TODO CoFix, Proj *)
             (* FIXME Case *)
@@ -115,21 +115,19 @@ let constr2json (c: Constr.t) : json =
                     let cases = Array.map begin fun case ->
                         (convert case)
                     end ac in
-                    let json_case_info = `Assoc [
-                        ("ndecls", `List (List.map begin fun ndecl -> `Int ndecl end (Array.to_list case_info.ci_cstr_ndecls)));
-                    ] in
+                    let json_case_info = `List (List.map begin fun ndecl -> `Int ndecl end (Array.to_list case_info.ci_cstr_ndecls)) in
                     let cases = Array.to_list cases in
                     [
-                        ("type", `String "case");
-                        ("case_info", json_case_info);
-                        ("term_matched", (convert c));
-                        ("term_type", (convert (mkInd case_info.ci_ind)));
-                        ("cases", `List cases)
+                        `String "case";
+                        json_case_info; (* case_info *)
+                        (convert c); (* term_matched *)
+                        (convert (mkInd case_info.ci_ind)); (* term_type *)
+                        `List cases (* cases *)
                     ]
             (* FIXME Fix *)
             | Fix _ ->
                     [
-                        ("type", `String "fix") 
+                        `String "fix"
                     ]
             | _ -> raise (SerializingFailure (Printf.sprintf "unhandled constr type %s" (Pp.string_of_ppcmds (Printer.pr_constr c))))
         end
@@ -144,15 +142,10 @@ let constrexpr2json (c: Constrexpr.constr_expr) : json =
             Pfedit.get_current_goal_context () 
         else
             let env = Global.env () in
-            (*
-             * I copied the `Evd.from_env` part from Pfedit.get_current_context
-             * still I don't know why they need a evar_map even when the corresponding
-             * environment is already given ...
-             *)
             Evd.from_env env, env
     end in
-    let (_, t) = (Constrintern.interp_open_constr env sigma c) in
-    constr2json (EConstr.Unsafe.to_constr t)
+    let (sigma, t) = (Constrintern.interp_open_constr env sigma c) in
+    (constr2json sigma (EConstr.Unsafe.to_constr t))
 
 let rec json2econstr (ext: json) : EConstr.t =
     let open Yojson.Basic.Util in

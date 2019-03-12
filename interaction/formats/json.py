@@ -32,53 +32,53 @@ class JsonFormat(Format):
 
             return f_with_comment
 
-        @add_comment
-        def convert(t):
-            try:
-                if t['type'] == 'sort':
-                    if t['sort'] == 'set':
-                        return Sort.mkSet()
-                    elif t['sort'] == 'prop':
-                        return Sort.mkProp()
-                    elif t['sort'] == 'type':
-                        return Sort.mkType(Universe.from_json(t['univ']))
-                    else:
-                        raise JsonConvertError('invalid sort name %s' % t['sort'])
-                elif t['type'] == 'app':
-                    args = list(map(convert, t['args']))
-                    return Apply(convert(t['func']), *args)
-                elif t['type'] == 'case':
-                    return Case.from_json(t)
-                elif t['type'] == 'cast':
-                    return Cast(convert(t['body']), t['cast_kind'], convert(t['guaranteed_type']))
-                elif t['type'] == 'const':
-                    return Const(t['name'], UniverseInstance.from_json(t['univ_inst']))
-                elif t['type'] == 'evar':
-                    # FIXME
-                    print('warn: evar is not fully supported yet')
-                    return Evar()
-                elif t['type'] == 'construct':
-                    return Construct(t['mutind_name'], t['ind_index'], t['constructor_index'], UniverseInstance.from_json(t['univ_inst']))
-                elif t['type'] == 'lambda':
-                    return Lambda(t['arg_name'], convert(t['arg_type']), convert(t['body']))
-                elif t['type'] == 'letin':
-                    return LetIn(t['arg_name'], convert(t['arg_type']), convert(t['arg_body']), convert(t['body']))
-                elif t['type'] == 'ind':
-                    return Ind(t['mutind_name'], t['ind_index'], UniverseInstance.from_json(t['univ_inst']))
-                elif t['type'] == 'var':
-                    return Var(t['name'])
-                elif t['type'] == 'rel':
-                    return Rel(t['index'])
-                elif t['type'] == 'prod':
-                    return Prod(t['arg_name'], convert(t['arg_type']), convert(t['body']))
-                elif t['type'] == 'fix':
-                    return Const('TBD')
-                else:
-                    raise JsonConvertError('unhandled json node %s' % json.dumps(t))
-            except KeyError as err:
-                raise JsonConvertError('json key error %s in %s' % (err, json.dumps(t)))
+#         @add_comment
+        # def convert(t):
+            # try:
+                # if t['type'] == 'sort':
+                    # if t['sort'] == 'set':
+                        # return Sort.mkSet()
+                    # elif t['sort'] == 'prop':
+                        # return Sort.mkProp()
+                    # elif t['sort'] == 'type':
+                        # return Sort.mkType(Universe.from_json(t['univ']))
+                    # else:
+                        # raise JsonConvertError('invalid sort name %s' % t['sort'])
+                # elif t['type'] == 'app':
+                    # args = list(map(convert, t['args']))
+                    # return Apply(convert(t['func']), *args)
+                # elif t['type'] == 'case':
+                    # return Case.from_json(t)
+                # elif t['type'] == 'cast':
+                    # return Cast(convert(t['body']), t['cast_kind'], convert(t['guaranteed_type']))
+                # elif t['type'] == 'const':
+                    # return Const(t['name'], UniverseInstance.from_json(t['univ_inst']))
+                # elif t['type'] == 'evar':
+                    # # FIXME
+                    # print('warn: evar is not fully supported yet')
+                    # return Evar.from_json(t)
+                # elif t['type'] == 'construct':
+                    # return Construct(t['mutind_name'], t['ind_index'], t['constructor_index'], UniverseInstance.from_json(t['univ_inst']))
+                # elif t['type'] == 'lambda':
+                    # return Lambda(t['arg_name'], convert(t['arg_type']), convert(t['body']))
+                # elif t['type'] == 'letin':
+                    # return LetIn(t['arg_name'], convert(t['arg_type']), convert(t['arg_body']), convert(t['body']))
+                # elif t['type'] == 'ind':
+                    # return Ind(t['mutind_name'], t['ind_index'], UniverseInstance.from_json(t['univ_inst']))
+                # elif t['type'] == 'var':
+                    # return Var(t['name'])
+                # elif t['type'] == 'rel':
+                    # return Rel(t['index'])
+                # elif t['type'] == 'prod':
+                    # return Prod(t['arg_name'], convert(t['arg_type']), convert(t['body']))
+                # elif t['type'] == 'fix':
+                    # return Const('TBD')
+                # else:
+                    # raise JsonConvertError('unhandled json node %s' % json.dumps(t))
+            # except KeyError as err:
+                # raise JsonConvertError('json key error %s in %s' % (err, json.dumps(t)))
 
-        return convert(json_item)
+        # return convert(json_item)
 
 
     @staticmethod

@@ -8,8 +8,9 @@ from .universe import Universe, UniverseInstance, NativeLevels
 from lib.common import all_are_same_instances, one_of_them_is
 
 
-class TypingUnclosedError(Exception):
-    pass
+class TypingUnclosedError(Exception): pass
+class TermDeserializationError(Exception): pass
+
 
 class Binding:
     def __init__(self, name, value=None, type=None):
@@ -51,14 +52,23 @@ class Term(abc.ABC):
     # if a term is created by a notation, then the way it is rendered depends on the notation
     # notations have no semantics
     notation: 'Notation' = None
+    term_subclasses = {}
 
     def __init__(self):
         self.comment = None
 
     @classmethod
     def from_json(cls, json_item):
-        from interaction.formats.json import JsonFormat
-        return JsonFormat.import_term(json_item)
+        try:
+            name = json_item[0]
+            return cls.term_subclasses[name].from_json(json_item)
+        except TermDeserializationError as err:
+            raise err
+        except Exception as err:
+            if json_item is None:
+                return None
+
+            raise TermDeserializationError("[%s] : %s" % (str(type(err).__name__), str(json_item)))
 
     def to_json(self):
         from interaction.formats.json import JsonFormat
@@ -208,6 +218,17 @@ class Sort(Term):
         if self.sort is SortEnum.type:
             assert self.univ is not None, "types should always declared with universes"
 
+    @classmethod
+    def from_json(cls, json_item):
+        if json_item[1] == 'prop':
+            return cls.mkProp()
+        elif json_item[1] == 'set':
+            return cls.mkSet()
+        elif json_item[1] == 'type':
+            return cls.mkType(Universe.from_json(json_item[2]))
+        else:
+            raise TermDeserializationError(str(json_item))
+
     def type(self, environment=None) -> 'Term':
         if self.sort is SortEnum.prop:
             return Sort(SortEnum.type, Universe.from_level(NativeLevels.Prop(), 1))
@@ -294,6 +315,14 @@ class Cast(Term):
         self.body = body
         self.cast_kind = cast_kind
         self.guaranteed_type = guaranteed_type
+
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(
+                Term.from_json(json_item[2]),
+                json_item[1],
+                Term.from_json(json_item[3])
+                )
 
     def type(self, environment=None) -> 'Term':
         return self.guaranteed_type
@@ -386,6 +415,13 @@ class Const(Term):
         else:
             self.univ_inst = univ_inst
 
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(
+                json_item[1],
+                UniverseInstance.from_json(json_item[2])
+                )
+
     def type(self, environment=None) -> 'Term':
         if environment is None:
             environment = Environment.default()
@@ -452,10 +488,10 @@ class Case(Term):
 
     @classmethod
     def from_json(cls, json_item):
-        term_matched = Term.from_json(json_item['term_matched'])
-        term_type = Term.from_json(json_item['term_type'])
+        term_matched = Term.from_json(json_item[2])
+        term_type = Term.from_json(json_item[3])
         cases = list(map(
-            Term.from_json, json_item['cases']
+            Term.from_json, json_item[4]
             ))
 
         return cls(term_matched, term_type, cases)
@@ -486,19 +522,36 @@ class Case(Term):
 
 class Evar(Term):
     # TODO not finished yet!!
-    def __init__(self):
+    def __init__(self, index, terms):
         Term.__init__(self)
 
-        pass
+        self.index = index
+        self.terms = terms
+
+    @classmethod
+    def from_json(cls, json_item):
+        # TODO
+        return cls(
+                json_item[1],
+                []
+                # TODO
+                )
 
     def type(self, environment=None) -> 'Term':
         raise Exception('unimplemented')
 
     def check(self, environment=None) -> 'Term':
+        print(self.render(environment))
         raise Exception('unimplemented')
 
     def render(self, environment=None, debug=False) -> 'str':
-        return 'EVAR'
+        return 'EVAR [%d] of {%s}' % (
+                self.index,
+                ", ".join(map(
+                    lambda t: t.render(environment, debug),
+                    self.terms
+                    ))
+                )
 
     def __eq__(self, value):
         return False
@@ -511,6 +564,10 @@ class Evar(Term):
 
 
 class Var(Const):
+
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(json_item[1])
 
     def type(self, environment=None) -> 'Term':
         if environment is None:
@@ -538,6 +595,10 @@ class Rel(Term):
 
         # all indexes in holboost must start from zero !!!!!!
         self.index = index
+
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(json_item[1])
 
     def type(self, environment=None) -> 'Term':
         binding = environment.rel(self.index)
@@ -607,6 +668,13 @@ class Apply(Term):
         self.func = func
         self.args = list(args)
         # assert len(args) > 0, "cannot create a trivial apply term with no args"
+
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(
+                Term.from_json(json_item[1]),
+                *map(Term.from_json, json_item[2])
+                )
 
     def type(self, environment=None) -> 'Term':
         # if the type of func is A -> B -> C and there are two arguments, then the type of the whole term
@@ -681,6 +749,14 @@ class ContextTerm(Term):
         self.arg_name = arg_name
         self.arg_type = arg_type
         self.body = body
+
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(
+                json_item[1],
+                Term.from_json(json_item[2]),
+                Term.from_json(json_item[3]),
+                )
 
     def get_binding(self):
         return Binding(
@@ -763,6 +839,15 @@ class LetIn(ContextTerm):
         ContextTerm.__init__(self, arg_name, arg_type, body)
 
         self.arg_body = arg_body
+
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(
+                json_item[1],
+                Term.from_json(json_item[2]),
+                Term.from_json(json_item[3]),
+                Term.from_json(json_item[4]),
+                )
 
     def get_binding(self):
         return Binding(
@@ -852,6 +937,15 @@ class Construct(Term):
         else:
             self.univ_inst = univ_inst
 
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(
+                json_item[1],
+                json_item[2],
+                json_item[3],
+                UniverseInstance.from_json(json_item[4])
+                )
+
     def type(self, environment=None) -> 'Term':
         if environment is None:
             environment = Environment.default()
@@ -913,6 +1007,14 @@ class Ind(Term):
             assert(isinstance(univ_inst, UniverseInstance))
             self.univ_inst = univ_inst
 
+    @classmethod
+    def from_json(cls, json_item):
+        return cls(
+                json_item[1],
+                json_item[2],
+                UniverseInstance.from_json(json_item[3]),
+                )
+
     def type(self, environment=None) -> 'Term':
         if environment is None:
             environment = Environment.default()
@@ -957,3 +1059,44 @@ class Ind(Term):
 
     def subterms_subst(self, subterms):
         return self
+
+
+class Fix(Term):
+
+    @classmethod
+    def from_json(cls, json_item):
+        return cls()
+
+    def type(self, environment=None) -> 'Term':
+        raise Exception('unimplemented')
+
+    def check(self, environment=None) -> 'Term':
+        raise Exception('unimplemented')
+
+    def render(self, environment=None, debug=False) -> 'str':
+        return "FIX(ME!)"
+
+    def __eq__(self, value):
+        return False
+
+    def subterms(self):
+        return []
+
+    def subterms_subst(self, subterms):
+        return self
+
+
+Term.term_subclasses['sort'] = Sort
+Term.term_subclasses['app'] = Apply
+Term.term_subclasses['case'] = Case
+Term.term_subclasses['cast'] = Cast
+Term.term_subclasses['const'] = Const
+Term.term_subclasses['evar'] = Evar
+Term.term_subclasses['construct'] = Construct
+Term.term_subclasses['lambda'] = Lambda
+Term.term_subclasses['letin'] = LetIn
+Term.term_subclasses['ind'] = Ind
+Term.term_subclasses['var'] = Var
+Term.term_subclasses['rel'] = Rel
+Term.term_subclasses['prod'] = Prod
+Term.term_subclasses['fix'] = Fix
