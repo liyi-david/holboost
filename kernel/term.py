@@ -522,35 +522,29 @@ class Case(Term):
 
 class Evar(Term):
     # TODO not finished yet!!
-    def __init__(self, index, terms):
+    def __init__(self, index, typ):
         Term.__init__(self)
 
         self.index = index
-        self.terms = terms
+        self.typ = typ
 
     @classmethod
     def from_json(cls, json_item):
         # TODO
         return cls(
                 json_item[1],
-                []
-                # TODO
+                Term.from_json(json_item[2])
                 )
 
     def type(self, environment=None) -> 'Term':
-        raise Exception('unimplemented')
+        return self.typ
 
     def check(self, environment=None) -> 'Term':
-        print(self.render(environment))
         raise Exception('unimplemented')
 
     def render(self, environment=None, debug=False) -> 'str':
-        return 'EVAR [%d] of {%s}' % (
-                self.index,
-                ", ".join(map(
-                    lambda t: t.render(environment, debug),
-                    self.terms
-                    ))
+        return '{%d: %s}' % (
+                self.index, self.typ.render(environment, debug)
                 )
 
     def __eq__(self, value):

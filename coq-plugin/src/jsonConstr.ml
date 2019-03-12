@@ -21,10 +21,11 @@ let constr2json (sigma: Evd.evar_map) (c: Constr.t) : json =
             | Meta index -> [ `String "meta"; `Int index ]
             | Evar (index, arr) ->
                     let open Evd in
-                    let _ = find sigma index in
+                    let evar_info = find sigma index in
                     [
                         `String "evar";
                         `Int (Evar.repr index);
+                        (convert evar_info.evar_concl)
                     ]
             | Sort sort ->
                     let comment = ref "" in
