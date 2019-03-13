@@ -48,7 +48,7 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
 
             data_preprocessing_time = time() - t1
             if data_preprocessing_time > threshold:
-                top.debug("server", "posted data size %d" % len(data))
+                top.debug("server", "posted data size %d KB" % (len(data) / 1024))
                 top.debug("server", "data pre-processing time cost: %.6f" % (time() - t1))
 
             top.namespace['__request__'] = parsed_data

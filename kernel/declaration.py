@@ -4,11 +4,19 @@ from kernel.universe import Universe, NativeLevels
 
 
 class Constant:
-    def __init__(self, name: 'str', typ: 'Term', body=None, is_builtin=False):
+    def __init__(self, name: 'str', typ: 'Term', json_body=None, is_builtin=False):
         self.name = name
         self.typ = typ
-        self.body = body
+        self.json_body = json_body
         self.is_builtin=is_builtin
+
+    @property
+    def body(self):
+        print('body rendered.')
+        if self.json_body is None:
+            return None
+
+        return Term.from_json(self.json_body)
 
     def type(self, environment=None, context=[]):
         return self.typ
@@ -21,7 +29,7 @@ class Constant:
         return Constant(
                 json_item['name'],
                 Term.from_json(json_item['type']),
-                None if 'body' not in json_item else Term.from_json(json_item['body']),
+                None if 'body' not in json_item else json_item['body'],
                 json_item['is_builtin']
                 )
 
