@@ -44,13 +44,10 @@ VERNAC COMMAND EXTEND Boom_refresh CLASSIFIED AS QUERY
 END;;
 
 VERNAC COMMAND EXTEND Boom_flags CLASSIFIED AS QUERY
-| [ "Boom" "Enable" "OpaqueProofExtraction" ] -> [ JsonTask.extract_opaqueproof := true; ]
-| [ "Boom" "Disable" "OpaqueProofExtraction" ] -> [ JsonTask.extract_opaqueproof := false; ]
+| [ "Boom" "OpaqueProofExtraction" "On" ] -> [ JsonTask.extract_opaqueproof := true; ]
+| [ "Boom" "OpaqueProofExtraction" "Off" ] -> [ JsonTask.extract_opaqueproof := false; ]
 | [ "Boom" "ExtractConstantBody" "On" ] -> [ JsonTask.extract_constbody := true; ]
 | [ "Boom" "ExtractConstantBody" "Off" ] -> [ JsonTask.extract_constbody := false; ]
-END;;
-
-VERNAC COMMAND EXTEND Boom_control_flags CLASSIFIED AS QUERY
 | [ "Boom" "Debug" "On" ] -> [
     let open Hbdebug in
     debug_flag := true;
@@ -68,6 +65,27 @@ VERNAC COMMAND EXTEND Boom_control_flags CLASSIFIED AS QUERY
     | [ "Boom" "Profiling" "Off" ] -> [
     Hbprofile.enable_profiling ();
     Feedback.msg_info Pp.(str "holboost profiling deactivated.")
+    ]
+END;;
+
+
+VERNAC COMMAND EXTEND Boom_render CLASSIFIED AS QUERY
+| [ "Boom" "Render" constr(c) "as" string(dotted_id) ] -> [
+    let json_constr = JsonConstr.constrexpr2json c in
+    let render_command = `Assoc [
+        ("name", `String "render");
+        ("term", json_constr);
+        ("path", `String dotted_id)
+    ] in
+    JsonTask.get_nonproof_task_and_then ~cmd:render_command begin
+        fun s ->
+            let resp = Hbsync.(post_json s) in
+            let open Yojson.Basic.Util in
+            if (resp |> member "error" |> to_bool) then begin
+                Feedback.msg_info Pp.(str "holboost failed because " ++ str (resp |> member "msg" |> to_string))
+            end else
+            ()
+    end
     ]
 END;;
 

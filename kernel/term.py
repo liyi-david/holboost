@@ -522,7 +522,7 @@ class Case(Term):
 
 class Evar(Term):
     # TODO not finished yet!!
-    def __init__(self, index, typ):
+    def __init__(self, index, typ=None):
         Term.__init__(self)
 
         self.index = index
@@ -530,7 +530,6 @@ class Evar(Term):
 
     @classmethod
     def from_json(cls, json_item):
-        # TODO
         return cls(
                 json_item[1],
                 Term.from_json(json_item[2])
@@ -544,7 +543,8 @@ class Evar(Term):
 
     def render(self, environment=None, debug=False) -> 'str':
         return '{%d: %s}' % (
-                self.index, self.typ.render(environment, debug)
+                self.index,
+                "?" if self.typ is None else self.typ.render(environment, debug)
                 )
 
     def __eq__(self, value):

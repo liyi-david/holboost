@@ -8,7 +8,7 @@ exception ExportFailure of string
 
 (* some flag variables *)
 let extract_opaqueproof : bool ref = ref false
-let extract_constbody : bool ref = ref false
+let extract_constbody : bool ref = ref true
 
 
 let get_rewrite_hints (dbs: string list) : json =

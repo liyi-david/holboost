@@ -7,6 +7,7 @@ from kernel.session import Session
 
 from plugins import load_plugins
 from interaction.formats.json import JsonFormat
+from interaction.commands.render import RenderCommand
 
 load_plugins(top)
 
@@ -18,3 +19,5 @@ if "coq" in cache:
 else:
     env = NamedEnvironment()
     Environment.set_default(env)
+
+rendered = RenderCommand.rendered

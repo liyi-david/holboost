@@ -200,16 +200,14 @@ class RewriteCommand(Command):
                 )
 
         if top.debug("rewrite"):
-            top.debug_namespace['rewrite_proof'] = partial_proof
+            top.debug("rewrite", "Ttuple   : ", Ttuple.autofold().render(self.task))
+            top.debug("rewrite", "a        : ", a.autofold().render(self.task))
+            top.debug("rewrite", "b        : ", b.autofold().render(self.task))
+            top.debug("rewrite", "P        : ", P.autofold().render(self.task))
+            top.debug("rewrite", "eq_proof : ", proof.autofold().render(self.task))
 
-            top.debug("rewrite", "Ttuple   : ", Ttuple.render(self.task))
-            top.debug("rewrite", "a        : ", a.render(self.task))
-            top.debug("rewrite", "b        : ", b.render(self.task))
-            top.debug("rewrite", "P        : ", P.render(self.task))
-            top.debug("rewrite", "eq_proof : ", proof.render(self.task))
-
-            top.debug("rewrite", "proof    : ", partial_proof.render(self.task))
-            top.debug("rewrite", "prf type : ", partial_proof.type(self.task).render(self.task))
+            top.debug("rewrite", "proof    : ", partial_proof.autofold().render(self.task))
+            top.debug("rewrite", "prf type : ", partial_proof.type(self.task).autofold().render(self.task))
 
         _, sideff = partial_proof.check(self.task)
 

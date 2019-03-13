@@ -22,7 +22,6 @@ let unfold_by_names (names: string list) : unit tactic =
 
 let unfold_fst_snd = unfold_by_names ["Coq.Init.Datatypes.fst"; "Coq.Init.Datatypes.snd"];;
 
-
 let cbv (pattern: string) : unit tactic =
     let re = Str.regexp pattern in
     tclENV >>=
@@ -86,6 +85,7 @@ let boom_autorewrite l extra_cmd =
             end else
                 try
                     match (resp |> member "feedback") with
+                    | `List []
                     | `Null -> begin
                         Feedback.msg_info Pp.(str "holboost rewriting failed to make any new progress.");
                         Tacticals.New.tclIDTAC
@@ -114,7 +114,7 @@ let boom_autorewrite l extra_cmd =
                     end
                 with
                     Not_found ->
-                        Feedback.msg_info Pp.(str "failed to print the returned econstr");
+                        Feedback.msg_error Pp.(str "failed to print the returned econstr");
                         Tacticals.New.tclIDTAC
     end
 ;;

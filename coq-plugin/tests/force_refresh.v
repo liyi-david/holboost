@@ -1,7 +1,7 @@
 Require Import Holboost.plugin.
 Require Import ZArith.
 
-Boom Enable OpaqueProofExtraction.
+Boom OpaqueProofExtraction On.
 
 Boom Refresh.
 

@@ -47,9 +47,14 @@ class BinaryNumberType(Macro):
 class BinaryNumberExpr(Macro):
 
     oprmap = {
+            '+'  : None,
+            '-'  : None,
+            '*'  : None,
+            '/'  : None,
             '<=' : Const('Coq.ZArith.BinInt.Z.le'),
             '<'  : Const('Coq.ZArith.BinInt.Z.lt'),
-            '='  : Apply(Ind('Coq.Init.Logic.eq', 0), BinaryNumberType())
+            '='  : Apply(Ind('Coq.Init.Logic.eq', 0), BinaryNumberType()),
+            '=='  : None,
             }
 
     def __init__(self, opr, l, r=None):
