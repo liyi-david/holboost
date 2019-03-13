@@ -89,6 +89,15 @@ VERNAC COMMAND EXTEND Boom_render CLASSIFIED AS QUERY
     ]
 END;;
 
+VERNAC COMMAND EXTEND Boom_guard CLASSIFIED AS QUERY
+| [ "Boom" "Guard" "Proved" ] -> [
+    let n = Proof_global.get_open_goals () in
+    if n > 0 then
+        raise Proof.UnfinishedProof
+    else
+        ()
+]
+END;;
 
 VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
 | [ "Boom" "TypeOf" constr(c) ] -> [

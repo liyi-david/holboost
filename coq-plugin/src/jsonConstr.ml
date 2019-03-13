@@ -69,7 +69,7 @@ let constr2json (sigma: Evd.evar_map) (c: Constr.t) : json =
                     ]
             | LetIn (arg_name, arg_type, arg_body, body) ->
                     [
-                        `String "lambda";
+                        `String "letin";
                         (json_of_nullable_name arg_name);
                         (convert arg_type);
                         (convert arg_body);

@@ -129,4 +129,3 @@ let boom_autorewrite_curr_goal l =
     let extra_cmd = [] in
     boom_autorewrite l extra_cmd
 ;;
-
