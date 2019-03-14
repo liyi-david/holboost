@@ -23,10 +23,33 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
 
     class CoqTaskHandler(BaseHTTPRequestHandler):
 
+        def do_GET(self):
+
+            top.debug("server", "GET request received.")
+            data = parse_qs(urlparse(self.path).query)
+            top.debug("server", "GET request received.")
+
+            # data could be in form of { a : [b] ... }
+            for key in data:
+                if len(data[key]) == 1:
+                    data[key] = data[key][0]
+
+            req = {
+                'client': 'browser',
+                'session': None,
+                'content': {
+                    'constants': [],
+                    'variables': [],
+                    'mutinds': [],
+                    'command': data
+                    }
+                }
+
+            self.do_REQUEST(req)
+
         def do_POST(self):
 
             top.debug("server", "=" * 80)
-            t0 = time()
 
             if self.client_address[0] in ('localhost', '127.0.0.1'):
                 # when the request comes from localhost, we perfer reading the task
@@ -41,25 +64,28 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
                 data = self.rfile.read(int(self.headers['content-length']))
                 data = data.decode('utf8')
 
-            t1 = time()
+            t0 = time()
 
             # data pre-processing: from string to json
             parsed_data = json.loads(data)
 
-            data_preprocessing_time = time() - t1
+            data_preprocessing_time = time() - t0
             if data_preprocessing_time > threshold:
                 top.debug("server", "posted data size %d KB" % (len(data) / 1024))
-                top.debug("server", "data pre-processing time cost: %.6f" % (time() - t1))
+                top.debug("server", "data pre-processing time cost: %.6f" % (time() - t0))
 
             top.namespace['__request__'] = parsed_data
 
+            self.do_REQUEST(parsed_data)
+
+        def do_REQUEST(self, parsed_data):
             reply = {
                     "error" : True,
                     "msg"   : "unhandled api url %s" % self.path
                     }
 
             try:
-                t1 = time()
+                t0 = time()
 
                 session_id = None
                 if 'session' in parsed_data:
@@ -68,7 +94,7 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
                 top.debug("server", "session id " + str(session_id))
                 task = Task.from_json(parsed_data['content'])
 
-                task_importing_time = time() - t1
+                task_importing_time = time() - t0
 
                 if task_importing_time > threshold:
                     top.debug("server", "task importing time cost: %.6f" % task_importing_time)
@@ -125,11 +151,12 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
                         "msg"      : "session lost"
                         }
             except Exception as err:
+                top.print("Exception captured.")
                 traceback.print_exc()
 
                 reply = {
                         "error"    : True,
-                        "msg"      : str(err)
+                        "msg"      : str(type(err).__name__) + " " + str(err)
                         }
 
 
@@ -137,12 +164,10 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
             self.send_header('Content-type', 'text/json')
             self.end_headers()
 
-            t = time()
-            self.wfile.write(json.dumps(reply).encode('utf8'))
-
             time_cost = time() - t0
-
             top.debug("server", "total task time cost : %.6f" % time_cost)
+
+            self.wfile.write(json.dumps(reply).encode('utf8'))
 
 
         def log_message(self, format, *args):

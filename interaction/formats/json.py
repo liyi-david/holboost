@@ -119,37 +119,37 @@ class JsonFormat(Format):
             elif isinstance(term, Cast):
                 return {
                         "type": "cast",
-                        "body": convert(term.body),
+                        "body": term.body.to_json(),
                         "cast_kind": term.cast_kind,
-                        "guaranteed_type": convert(term.guaranteed_type)
+                        "guaranteed_type": term.guaranteed_type.to_json()
                         }
             elif isinstance(term, Prod):
                 return {
                         "type": "prod",
                         "arg_name": term.arg_name,
-                        "arg_type": convert(term.arg_type),
-                        "body": convert(term.body)
+                        "arg_type": term.arg_type.to_json(),
+                        "body": term.body.to_json()
                         }
             elif isinstance(term, Lambda):
                 return {
                         "type": "lambda",
                         "arg_name": term.arg_name,
-                        "arg_type": convert(term.arg_type),
-                        "body": convert(term.body)
+                        "arg_type": term.arg_type.to_json(),
+                        "body": term.body.to_json()
                         }
             elif isinstance(term, LetIn):
                 return {
                         "type": "letin",
                         "arg_name": term.arg_name,
-                        "arg_type": convert(term.arg_type),
-                        "arg_body": convert(term.arg_body),
-                        "body": convert(term.body)
+                        "arg_type": term.arg_type.to_json(),
+                        "arg_body": term.arg_body.to_json(),
+                        "body": term.body.to_json()
                         }
             elif isinstance(term, Apply):
                 return {
                         "type": "app",
-                        "func": convert(term.func),
-                        "args": list(map(lambda arg: convert(arg), term.args))
+                        "func": term.func.to_json(),
+                        "args": list(map(lambda arg: arg.to_json(), term.args))
                         }
             else:
                 raise JsonConvertError("%s does not support json-exporting!" % str(type(term)))

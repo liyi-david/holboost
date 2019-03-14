@@ -12,7 +12,6 @@ class Constant:
 
     @property
     def body(self):
-        print('body rendered.')
         if self.json_body is None:
             return None
 

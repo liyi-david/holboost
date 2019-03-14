@@ -42,7 +42,7 @@ class Task(NamedEnvironment):
         env = Environment.from_json(json_item)
 
         task = Task(
-                Term.from_json(json_item['goal']),
+                None if 'goal' not in json_item else Term.from_json(json_item['goal']),
                 env.constants,
                 env.variables,
                 env.mutinds,
