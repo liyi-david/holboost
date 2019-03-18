@@ -70,9 +70,8 @@ class Term(abc.ABC):
 
             raise TermDeserializationError("[%s] : %s" % (str(type(err).__name__), str(json_item)))
 
-    def to_json(self):
-        from interaction.formats.json import JsonFormat
-        return JsonFormat.export_term(self)
+    def to_json(self, environment=None):
+        assert False, "unimplemented"
 
     @abc.abstractmethod
     def type(self, environment=None) -> 'Term':
@@ -229,6 +228,13 @@ class Sort(Term):
         else:
             raise TermDeserializationError(str(json_item))
 
+    def to_json(self, environment=None):
+        return [
+                "sort",
+                self.sort.value,
+                None if self.univ is None else self.univ.to_json()
+                ]
+
     def type(self, environment=None) -> 'Term':
         if self.sort is SortEnum.prop:
             return Sort(SortEnum.type, Universe.from_level(NativeLevels.Prop(), 1))
@@ -323,6 +329,14 @@ class Cast(Term):
                 json_item[1],
                 Term.from_json(json_item[3])
                 )
+
+    def to_json(self, environment=None):
+        return [
+                "cast",
+                self.body.to_json(environment),
+                self.cast_kind,
+                self.guaranteed_type.to_json(environment)
+                ]
 
     def type(self, environment=None) -> 'Term':
         return self.guaranteed_type
@@ -421,6 +435,13 @@ class Const(Term):
                 json_item[1],
                 UniverseInstance.from_json(json_item[2])
                 )
+
+    def to_json(self, environment=None):
+        return [
+                "const",
+                self.name,
+                self.univ_inst.to_json()
+                ]
 
     def type(self, environment=None) -> 'Term':
         if environment is None:
@@ -563,6 +584,11 @@ class Var(Const):
     def from_json(cls, json_item):
         return cls(json_item[1])
 
+    def to_json(self, environment):
+        return [
+                "var", self.name
+                ]
+
     def type(self, environment=None) -> 'Term':
         if environment is None:
             environment = Environment.default()
@@ -593,6 +619,9 @@ class Rel(Term):
     @classmethod
     def from_json(cls, json_item):
         return cls(json_item[1])
+
+    def to_json(self, environment=None):
+        return [ "rel", self.index ]
 
     def type(self, environment=None) -> 'Term':
         binding = environment.rel(self.index)
@@ -669,6 +698,11 @@ class Apply(Term):
                 Term.from_json(json_item[1]),
                 *map(Term.from_json, json_item[2])
                 )
+
+    def to_json(self, environment=None):
+        return [
+                "app", self.func.to_json(environment), list(map(lambda arg: arg.to_json(environment), self.args))
+                ]
 
     def type(self, environment=None) -> 'Term':
         # if the type of func is A -> B -> C and there are two arguments, then the type of the whole term
@@ -759,6 +793,15 @@ class ContextTerm(Term):
 
 
 class Prod(ContextTerm):
+
+    def to_json(self, environment=None):
+        return [
+                "prod",
+                self.arg_name,
+                self.arg_type.to_json(environment),
+                self.body.to_json(environment),
+                ]
+
     def type(self, environment=None) -> 'Term':
         """
         please refer to https://coq.inria.fr/distrib/current/refman/language/cic.html
@@ -843,6 +886,15 @@ class LetIn(ContextTerm):
                 Term.from_json(json_item[4]),
                 )
 
+    def to_json(self, environment=None):
+        return [
+                "letin",
+                self.arg_name,
+                self.arg_type.to_json(environment),
+                self.arg_body.to_json(environment),
+                self.body.to_json(environment),
+                ]
+
     def get_binding(self):
         return Binding(
                 self.arg_name,
@@ -887,6 +939,14 @@ class LetIn(ContextTerm):
 
 
 class Lambda(ContextTerm):
+
+    def to_json(self, environment=None):
+        return [
+                "lambda",
+                self.arg_name,
+                self.arg_type.to_json(environment),
+                self.body.to_json(environment),
+                ]
 
     def type(self, environment=None) -> 'Term':
         return Prod(None, self.arg_type, self.body.type(
@@ -939,6 +999,16 @@ class Construct(Term):
                 json_item[3],
                 UniverseInstance.from_json(json_item[4])
                 )
+
+    def to_json(self, environment=None):
+        return [
+                "construct",
+                self.mutind_name,
+                self.ind_index,
+                self.constructor_index,
+                None if self.univ_inst is None else self.univ_inst.to_json()
+                ]
+
 
     def type(self, environment=None) -> 'Term':
         if environment is None:
@@ -1008,6 +1078,14 @@ class Ind(Term):
                 json_item[2],
                 UniverseInstance.from_json(json_item[3]),
                 )
+
+    def to_json(self, environment=None):
+        return [
+                "ind",
+                self.mutind_name,
+                self.ind_index,
+                None if self.univ_inst is None else self.univ_inst.to_json()
+                ]
 
     def type(self, environment=None) -> 'Term':
         if environment is None:

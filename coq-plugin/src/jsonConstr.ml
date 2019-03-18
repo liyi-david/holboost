@@ -151,71 +151,71 @@ let constrexpr2json (c: Constrexpr.constr_expr) : json =
 let rec json2econstr (ext: json) : EConstr.t =
     let open Yojson.Basic.Util in
     let open EConstr in
-    let term_type : string = ext |> member "type" |> to_string in
+    let term_type : string = ext |> index 0 |> to_string in
     try
         let result : EConstr.t =
             match term_type with
-            | "rel" -> mkRel ((ext |> member "index" |> to_int) + 1)
-            | "var" -> mkVar (Names.Id.of_string (ext |> member "name" |> to_string))
+            | "rel" -> mkRel ((ext |> index 1 |> to_int) + 1)
+            | "var" -> mkVar (Names.Id.of_string (ext |> index 1 |> to_string))
             | "sort" -> mkSort begin
-                let sort_name : string = (ext |> member "sort" |> to_string) in
+                let sort_name : string = (ext |> index 1 |> to_string) in
                 match sort_name with
                 | "prop" -> Sorts.prop
                 | "set"  -> Sorts.set
-                | "type" -> Sorts.Type (JsonUniv.universe_import (ext |> member "univ"))
+                | "type" -> Sorts.Type (JsonUniv.universe_import (ext |> index 2))
                 | _ -> raise (DeserializingFailure ("unexpected sort name", ext))
             end
             | "prod" ->
                 mkProd (
-                    (Names.Name.mk_name (Names.Id.of_string (ext |> member "arg_name" |> to_string))),
-                    (json2econstr (ext |> member "arg_type")),
-                    (json2econstr (ext |> member "body"))
+                    (Names.Name.mk_name (Names.Id.of_string (ext |> index 1 |> to_string))),
+                    (json2econstr (ext |> index 2)),
+                    (json2econstr (ext |> index 3))
                 )
             | "lambda" ->
                 mkLambda (
-                    (Names.Name.mk_name (Names.Id.of_string (ext |> member "arg_name" |> to_string))),
-                    (json2econstr (ext |> member "arg_type")),
-                    (json2econstr (ext |> member "body"))
+                    (Names.Name.mk_name (Names.Id.of_string (ext |> index 1 |> to_string))),
+                    (json2econstr (ext |> index 2)),
+                    (json2econstr (ext |> index 3))
                 )
             | "letin" ->
                 mkLetIn (
-                    (Names.Name.mk_name (Names.Id.of_string (ext |> member "arg_name" |> to_string))),
-                    (json2econstr (ext |> member "arg_type")),
-                    (json2econstr (ext |> member "arg_body")),
-                    (json2econstr (ext |> member "body"))
+                    (Names.Name.mk_name (Names.Id.of_string (ext |> index 1 |> to_string))),
+                    (json2econstr (ext |> index 2)),
+                    (json2econstr (ext |> index 3)),
+                    (json2econstr (ext |> index 4))
                 )
             | "app" ->
-                    let json_args : json list = ext |> member "args" |> to_list in
+                    let json_args : json list = ext |> index 2 |> to_list in
                     let econstr_args = List.map json2econstr json_args in
-                    mkApp (json2econstr (ext |> member "func"), Array.of_list econstr_args)
+                    mkApp (json2econstr (ext |> index 1), Array.of_list econstr_args)
             | "cast" ->
-                    let cast_kind = match (ext |> member "cast_kind" |> to_int) with
+                    let cast_kind = match (ext |> index 2 |> to_int) with
                     | 0 -> Constr.VMcast
                     | 1 -> Constr.NATIVEcast
                     | 2 -> Constr.DEFAULTcast
                     | 3 -> Constr.REVERTcast
-                    | _ -> raise (DeserializingFailure ("unsupported cast index", (ext |> member "cast_kind")))
+                    | _ -> raise (DeserializingFailure ("unsupported cast index", (ext |> index 2)))
                     in
-                    mkCast ((json2econstr (ext |> member "body")), cast_kind, (json2econstr (ext |> member "guaranteed_type")))
+                    mkCast ((json2econstr (ext |> index 1)), cast_kind, (json2econstr (ext |> index 3)))
             | "const" ->
-                let name = ext |> member "name" |> to_string in begin
+                let name = ext |> index 1 |> to_string in begin
                     match Declbuf.get name with
                     | Some (Declbuf.ConstantDecl const) -> mkConst const 
                     | _ -> raise (DeserializingFailure (Printf.sprintf "const %s not found in the buffer." name, `Null))
                 end
             | "ind" ->
-                let name = ext |> member "mutind_name" |> to_string in begin
+                let name = ext |> index 1 |> to_string in begin
                     match Declbuf.get name with
-                    | Some (Declbuf.MutindDecl mutind) -> mkInd (mutind, (ext |> member "ind_index" |> to_int))
+                    | Some (Declbuf.MutindDecl mutind) -> mkInd (mutind, (ext |> index 2 |> to_int))
                     | _ -> raise (DeserializingFailure (Printf.sprintf "mutind %s not found in the buffer." name, `Null))
                 end
             | "construct" ->
-                let name = ext |> member "mutind_name" |> to_string in begin
+                let name = ext |> index 1 |> to_string in begin
                     match Declbuf.get name with
                     | Some (Declbuf.MutindDecl mutind) -> mkConstruct (
-                        (mutind, (ext |> member "ind_index" |> to_int)),
+                        (mutind, (ext |> index 2 |> to_int)),
                         (* IMPORTANT: indexes of constructors start from 1 *)
-                        (ext |> member "constructor_index" |> to_int) + 1
+                        (ext |> index 3 |> to_int) + 1
                     )
                     | _ -> raise (DeserializingFailure (Printf.sprintf "mutind %s not found in the buffer." name, `Null))
                 end
