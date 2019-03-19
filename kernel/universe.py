@@ -197,6 +197,9 @@ class UniverseInstance:
 
     @staticmethod
     def from_json(json):
+        if json is None:
+            json = []
+
         assert isinstance(json, list)
         return UniverseInstance(
                 list(map(CoqLevel.from_json, json))
@@ -285,6 +288,9 @@ class CoqLevel(Level):
 
     @staticmethod
     def from_json(json):
+        if json is None:
+            json = []
+
         if len(json) == 1:
             if json[0] == "Prop":
                 return NativeLevels.Prop()
