@@ -21,7 +21,7 @@ class Command(abc.ABC):
 
         classname = json_item['name'].strip()
         subclasses = cls.__subclasses__()
-        matched_subclasses = list(filter(lambda c: c.__name__.lower() == classname.lower() + "Command", subclasses))
+        matched_subclasses = list(filter(lambda c: c.__name__.lower() == classname.lower() + "command", subclasses))
 
         if len(matched_subclasses) == 0:
             raise Exception("unsupported command name %s." % classname)
