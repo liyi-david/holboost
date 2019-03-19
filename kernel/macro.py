@@ -19,7 +19,7 @@ class MacroFoldRule:
     def enable(cls, reg):
         filt = re.compile(reg)
         for c in cls.__subclasses__():
-            fullpath = c.__module__ + c.__name__
+            fullpath = c.__module__ + "." c.__name__
             if filt.match(fullpath):
                 assert not isinstance(c, Macro), "MacroFoldRule and Macro cannot be inherited in the same class %s" % (
                         fullpath
