@@ -38,7 +38,7 @@ class Task(NamedEnvironment):
     @classmethod
     def from_json(cls, json_item):
         from .term import Term
-        from interaction.commands import Command
+        from .command import Command
         env = Environment.from_json(json_item)
 
         task = Task(

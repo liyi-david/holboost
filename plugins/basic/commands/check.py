@@ -1,5 +1,5 @@
 from kernel.term import Term
-from .command import Command
+from kernel.command import Command
 
 class CheckCommand(Command):
     """

@@ -7,7 +7,7 @@ Definition hundred := 100.
 Boom ExtractConstantBody On.
 
 Boom Print hundred.
-Boom Remote "__task__['hundred'].body.autofold()".
+Boom Remote "__task__['hundred'].body.fold()".
 
 Definition add := 2 + 5.
-Boom Remote "__task__['add'].body.autofold()".
+Boom Remote "__task__['add'].body.fold()".

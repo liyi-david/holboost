@@ -166,7 +166,7 @@ class Term(abc.ABC):
                     # list(map(lambda t: t.unfold(environment, context), self.subterms()))
                     # )
 
-    def autofold(self):
+    def fold(self):
         from kernel.macro import Macro
         if isinstance(self, Macro):
             return self
@@ -799,7 +799,9 @@ class Prod(ContextTerm):
                 "prod",
                 self.arg_name,
                 self.arg_type.to_json(environment),
-                self.body.to_json(environment),
+                self.body.to_json(
+                    ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment)
+                    )
                 ]
 
     def type(self, environment=None) -> 'Term':
@@ -892,7 +894,9 @@ class LetIn(ContextTerm):
                 self.arg_name,
                 self.arg_type.to_json(environment),
                 self.arg_body.to_json(environment),
-                self.body.to_json(environment),
+                self.body.to_json(
+                    ContextEnvironment(Binding(self.arg_name, self.arg_body, self.arg_type), environment)
+                    )
                 ]
 
     def get_binding(self):
@@ -945,7 +949,9 @@ class Lambda(ContextTerm):
                 "lambda",
                 self.arg_name,
                 self.arg_type.to_json(environment),
-                self.body.to_json(environment),
+                self.body.to_json(
+                    ContextEnvironment(Binding(self.arg_name, None, self.arg_type), environment)
+                    )
                 ]
 
     def type(self, environment=None) -> 'Term':

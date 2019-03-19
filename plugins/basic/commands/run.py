@@ -1,7 +1,5 @@
-from sys import stdout
-
 from kernel.session import Session
-from .command import Command
+from kernel.command import Command
 
 
 class RunCommand(Command):
@@ -25,7 +23,9 @@ class RunCommand(Command):
             return msg
 
         try:
-            top.run(self.cmd, { '__task__': self.task })
+            copied_ns = top.namespace.copy()
+            copied_ns ['__task__'] = self.task
+            top.run(self.cmd, copied_ns)
             return "successfully finished."
         except Exception as err:
             from traceback import print_exc

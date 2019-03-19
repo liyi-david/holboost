@@ -3,10 +3,10 @@ from urllib.parse import urlparse, parse_qs
 from time import time
 from sys import stdout
 
-from interaction.commands import IdleCommand, ConnectCommand, DisconnectCommand, RunCommand
 from kernel.environment import NamedEnvironment
 from kernel.session import Session
 from kernel.task import Task
+from kernel.command import Command
 
 import threading
 import traceback
@@ -113,7 +113,7 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
                     task.inherited_environment = session.task
                     session.task = task
 
-                if profile and type(task.command) not in (IdleCommand, ConnectCommand, DisconnectCommand, RunCommand):
+                if profile and not task.command.is_trivial:
                     prof = cProfile.Profile()
                     result = prof.runcall(task.run, top)
 

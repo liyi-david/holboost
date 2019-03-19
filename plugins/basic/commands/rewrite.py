@@ -1,9 +1,9 @@
 from kernel.term import *
 from kernel.environment import ContextEnvironment
+from kernel.command import Command
 
 from plugins.basic.patternmatching import *
 from plugins.theories.product import tuple_nth
-from .command import Command
 
 
 def is_equality_relation(term):
@@ -200,14 +200,14 @@ class RewriteCommand(Command):
                 )
 
         if top.debug("rewrite"):
-            top.debug("rewrite", "Ttuple   : ", Ttuple.autofold().render(self.task))
-            top.debug("rewrite", "a        : ", a.autofold().render(self.task))
-            top.debug("rewrite", "b        : ", b.autofold().render(self.task))
-            top.debug("rewrite", "P        : ", P.autofold().render(self.task))
-            top.debug("rewrite", "eq_proof : ", proof.autofold().render(self.task))
+            top.debug("rewrite", "Ttuple   : ", Ttuple.fold().render(self.task))
+            top.debug("rewrite", "a        : ", a.fold().render(self.task))
+            top.debug("rewrite", "b        : ", b.fold().render(self.task))
+            top.debug("rewrite", "P        : ", P.fold().render(self.task))
+            top.debug("rewrite", "eq_proof : ", proof.fold().render(self.task))
 
-            top.debug("rewrite", "proof    : ", partial_proof.autofold().render(self.task))
-            top.debug("rewrite", "prf type : ", partial_proof.type(self.task).autofold().render(self.task))
+            top.debug("rewrite", "proof    : ", partial_proof.fold().render(self.task))
+            top.debug("rewrite", "prf type : ", partial_proof.type(self.task).fold().render(self.task))
 
         _, sideff = partial_proof.check(self.task)
 

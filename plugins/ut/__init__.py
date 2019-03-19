@@ -1,11 +1,11 @@
-from kernel.macro import Macro
+from kernel.macro import Macro, MacroFoldRule
 from kernel.environment import ContextEnvironment
 from kernel.term import Lambda, Var, Const, Apply, Binding, Rel
 
 from plugins.theories.product import tuple
+from .rules import *
 
-
-class Statement(Macro):
+class Statement(Macro, MacroFoldRule):
 
     def __repr__(self):
         return self.render()
@@ -14,13 +14,13 @@ class Statement(Macro):
         raise Exception('unimplemented')
 
 
-class Labelled(Macro):
+class Labelled(Statement):
     ut_stmt_label = "src.type.stmt_label"
 
     @classmethod
     def fold(cls, t):
         if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_stmt_label:
-            return t.args[2].autofold()
+            return t.args[2].fold()
 
 
 class PlaceHolder(Statement):
@@ -36,7 +36,7 @@ class PlaceHolder(Statement):
     @classmethod
     def fold(cls, t):
         if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_placeholder:
-            return cls(t.args[3].autofold())
+            return cls(t.args[3].fold())
 
 
 class Assign(Statement):
@@ -115,7 +115,7 @@ class Return(Statement):
     @classmethod
     def fold(cls, t):
         if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name == cls.ut_return:
-            return Return(t.args[4].autofold())
+            return Return(t.args[4].fold())
 
     def to_json(self):
         json = Statement.to_json(self)
@@ -159,14 +159,14 @@ class Sequential(Statement):
     def fold(cls, t):
         stmts = []
         while isinstance(t, Apply) and t.func == cls.ut_bind and isinstance(t.args[4], Lambda):
-            stmts.append(Assign(t.args[4].arg_name, t.args[3].autofold()))
+            stmts.append(Assign(t.args[4].arg_name, t.args[3].fold()))
             t = t.args[4].body
 
         else:
             if len(stmts) == 0:
                 return None
             else:
-                stmts.append(t.autofold())
+                stmts.append(t.fold())
 
         return Sequential(*stmts)
 
@@ -177,10 +177,3 @@ class Sequential(Statement):
             })
 
         return json
-
-
-Sequential.register()
-Labelled.register()
-Return.register()
-Guard.register()
-PlaceHolder.register()

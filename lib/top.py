@@ -64,9 +64,12 @@ class Top:
             print("\r\x1b[43mDebug   MSG \x1b[0m", *args)
             print("\x1b[32mHolboost\x1b[0m >>> ", end="", flush=True)
 
-    def run(self, cmd, local={}):
+    def run(self, cmd, ns=None):
         cmd = DSL.preprocess(cmd)
-        return exec_or_evar(cmd, self.namespace, local)
+        if ns is None or ns == {}:
+            return exec_or_evar(cmd, self.namespace)
+        else:
+            return exec_or_evar(cmd, ns)
 
     def print_profile(self, p):
         st = pstats.Stats(p)

@@ -1,7 +1,5 @@
 from kernel.session import Session
-
-from .command import Command
-from .result import DictResult
+from kernel.command import Command
 
 
 class DisconnectCommand(Command):

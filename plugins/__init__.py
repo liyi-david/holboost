@@ -38,5 +38,7 @@ def load_plugins(top, plugin_dir="plugins"):
                 except Exception as err:
                     print_exc()
 
-    print("%d loaded." % len(loaded))
-    top.print(loaded)
+    print("%d plugins detected: %s" % (
+        len(loaded),
+        str(loaded)
+        ))

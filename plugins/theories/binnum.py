@@ -1,4 +1,4 @@
-from kernel.macro import Macro
+from kernel.macro import Macro, MacroFoldRule
 from kernel.term import Sort, Ind, Construct, Apply, Const
 
 
@@ -84,32 +84,37 @@ class BinaryNumberExpr(Macro):
                 self.l, self.r
                 )
 
-    @classmethod
-    def fold(cls, t):
-
-        # fold 1: word library for unit-verification
-        _ut = "UnitVerify.Word."
-        _ut_binoprs = {
-                _ut + 'wplus'    : '+',
-                _ut + 'wminus'  : '-',
-                _ut + 'wmult'   : '*',
-                _ut + 'wdiv'    : '/',
-                _ut + 'wlt_bool': '<',
-                _ut + 'wle_bool': '<=',
-                _ut + 'wgt_bool': '>',
-                _ut + 'wge_bool': '>=',
-                _ut + 'weq_bool': '==',
-                _ut + 'wne_bool': '!=',
-                }
-
-        if isinstance(t, Apply) and isinstance(t.func, Const) and t.func.name in _ut_binoprs:
-            return cls(_ut_binoprs[t.func.name], t.args[2].autofold(), t.args[3].autofold())
-
-
 class BinaryNumberValue(Macro):
 
     coq_Z = 'Coq.Numbers.BinNums.Z'
     coq_positive = 'Coq.Numbers.BinNums.positive'
+
+    class FoldBinaryNumberValue(MacroFoldRule):
+
+        @classmethod
+        def fold(cls, t):
+            if isinstance(t, Apply) and isinstance(t.func, Construct) and t.func.mutind_name == BinaryNumberValue.coq_Z:
+                if t.func.constructor_index == 0:
+                    return integer(0)
+                else:
+                    sgn = 1 if t.func.constructor_index == 1 else -1
+
+                pos = t.args[0]
+                bits = ''
+                while isinstance(pos, (Apply, Construct)):
+                    if isinstance(pos, Construct) and pos.mutind_name == BinaryNumberValue.coq_positive and pos.constructor_index == 2:
+                        bits = '1' + bits
+                        break
+                    elif isinstance(pos, Apply) and isinstance(pos.func, Construct) and pos.func.mutind_name == BinaryNumberValue.coq_positive:
+                        bits = ('1' if pos.func.constructor_index == 0 else '0') + bits
+                        pos = pos.args[0]
+                    else:
+                        raise cls.MacroFoldFailure()
+
+                return integer(sgn * int(bits, 2))
+
+
+
 
     def __init__(self, value):
         self.value = value
@@ -146,30 +151,4 @@ class BinaryNumberValue(Macro):
             result = Apply(constructor, result)
             return result
 
-    @classmethod
-    def fold(cls, t):
-        if isinstance(t, Apply) and isinstance(t.func, Construct) and t.func.mutind_name == cls.coq_Z:
-            if t.func.constructor_index == 0:
-                return integer(0)
-            else:
-                sgn = 1 if t.func.constructor_index == 1 else -1
-
-            pos = t.args[0]
-            bits = ''
-            while isinstance(pos, (Apply, Construct)):
-                if isinstance(pos, Construct) and pos.mutind_name == cls.coq_positive and pos.constructor_index == 2:
-                    bits = '1' + bits
-                    break
-                elif isinstance(pos, Apply) and isinstance(pos.func, Construct) and pos.func.mutind_name == cls.coq_positive:
-                    bits = ('1' if pos.func.constructor_index == 0 else '0') + bits
-                    pos = pos.args[0]
-                else:
-                    raise Macro.MacroFoldFailure()
-
-            return integer(sgn * int(bits, 2))
-
-
-
 integer = BinaryNumberType()
-BinaryNumberValue.register()
-BinaryNumberExpr.register()

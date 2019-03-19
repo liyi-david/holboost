@@ -6,7 +6,55 @@ but it of course makes it harder to reason program properties. Instead, we want 
 """
 from .term import Term
 
+import re
 import abc
+
+class MacroFoldRule:
+
+    class MacroFoldFailure(Exception): pass
+
+    registered_rules = {}
+
+    @classmethod
+    def enable(cls, reg):
+        filt = re.compile(reg)
+        for c in cls.__subclasses__():
+            fullpath = c.__module__ + c.__name__
+            if filt.match(fullpath):
+                assert not isinstance(c, Macro), "MacroFoldRule and Macro cannot be inherited in the same class %s" % (
+                        fullpath
+                        )
+                cls.registered_rules[fullpath] = c
+
+    @classmethod
+    def fold(cls, term):
+        # a macro will not be folded
+        if isinstance(term, Macro):
+            return term
+
+        # fold from the root
+        for _, rule in cls.registered_rules.items():
+            try:
+                folden = rule.fold(term)
+                if folden is not None:
+                    return folden
+            except cls.MacroFoldFailure as err:
+                pass
+
+        # fold the subterms
+        try:
+            folden_subterms = []
+            for t in term.subterms():
+                folden_subterms.append(t.fold())
+                if folden_subterms[-1] is None:
+                    return term
+
+            return term.subterms_subst(folden_subterms)
+        except cls.MacroFoldFailure:
+            pass
+
+        return term
+
 
 class Macro(Term, metaclass=abc.ABCMeta):
 
@@ -36,67 +84,18 @@ class Macro(Term, metaclass=abc.ABCMeta):
     def subterms_subst(self, subterms):
         raise Macro.MacroAbuse
 
+    def fold(self):
+        return MacroFoldRule.fold(self)
+
     @abc.abstractmethod
     def unfold(self, environment=None) -> 'Term':
         pass
 
-    def to_json(self):
+    def to_json(self, environment=None):
         return {
                 "node": "macro",
                 "macro_name": self.macro_name(),
-                "macro_repr": repr(self)
                 }
-
-    """
-    interpretation registeration mechanism
-
-    this allows plugins to register their interpretations
-    """
-    class MacroFoldFailure(Exception):
-        """
-        any foldable Macro should raise this exception when the folding process fails
-        """
-        pass
-
-    __registered_macros = {}
-
-    @classmethod
-    def register(cls):
-        if cls.macro_name() not in cls.__registered_macros:
-            cls.__registered_macros[cls.macro_name()] = cls
-        else:
-            raise Exception("interpretation %s already exist!" % cls.name())
-
-    @classmethod
-    def fold(cls, term):
-        """
-        fold a term as macro.
-        """
-        if cls is not Macro:
-            raise cls.MacroFoldFailure("the macro %s does not support fold feature!" % cls.macro_name())
-
-        # fold from the root
-        for _, macro in cls.__registered_macros.items():
-            try:
-                folden = macro.fold(term)
-                if folden is not None:
-                    return folden
-            except cls.MacroFoldFailure as err:
-                pass
-
-        # fold the subterms
-        try:
-            folden_subterms = []
-            for t in term.subterms():
-                folden_subterms.append(t.autofold())
-                if folden_subterms[-1] is None:
-                    return term
-
-            return term.subterms_subst(folden_subterms)
-        except cls.MacroFoldFailure:
-            pass
-
-        return term
 
 
 

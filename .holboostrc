@@ -1,13 +1,12 @@
 from kernel.term import *
-from kernel.macro import *
+from kernel.macro import Macro, MacroFoldRule
 from kernel.proofview import Proofview
 from kernel.environment import *
-from kernel.dsl import DSL
 from kernel.session import Session
+from kernel.command import Command
 
 from plugins import load_plugins
-from interaction.formats.json import JsonFormat
-from interaction.commands.render import RenderCommand
+from plugins.basic.commands.render import RenderCommand
 
 load_plugins(top)
 
@@ -20,4 +19,5 @@ else:
     env = NamedEnvironment()
     Environment.set_default(env)
 
+MacroFoldRule.enable('plugins.theories.*')
 rendered = RenderCommand.rendered

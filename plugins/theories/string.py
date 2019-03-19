@@ -1,4 +1,4 @@
-from kernel.macro import Macro
+from kernel.macro import Macro, MacroFoldRule
 from kernel.term import Construct, Ind, Apply
 
 from .bool import true, false
@@ -60,6 +60,20 @@ class StringType(Macro):
 
 class StringValue(Macro):
 
+    class FoldStringValue(MacroFoldRule):
+        @classmethod
+        def fold(cls, t):
+            s = ""
+            while isinstance(t, Apply) and t.func == _coq_string_cons:
+                s += from_ascii(t.args[0])
+                t = t.args[1]
+
+            if t == _coq_string_empty:
+                return string(s)
+            else:
+                raise cls.MacroFoldFailure
+
+
     def __init__(self, val):
         self.val = val
 
@@ -74,18 +88,6 @@ class StringValue(Macro):
 
         return coqs
 
-    @classmethod
-    def fold(cls, t):
-        s = ""
-        while isinstance(t, Apply) and t.func == _coq_string_cons:
-            s += from_ascii(t.args[0])
-            t = t.args[1]
-
-        if t == _coq_string_empty:
-            return string(s)
-        else:
-            raise Macro.MacroFoldFailure
-
 
     def type(self, environment=None, debug=False):
         return string
@@ -93,5 +95,4 @@ class StringValue(Macro):
     def render(self, environment=None, debug=False):
         return "\"%s\"" % self.val
 
-StringValue.register()
 string = StringType()

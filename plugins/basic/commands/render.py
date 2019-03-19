@@ -1,5 +1,5 @@
 from kernel.term import Term, Const
-from .command import Command
+from kernel.command import Command
 
 class RenderCommand(Command):
 
@@ -24,11 +24,11 @@ class RenderCommand(Command):
             for token in paths[:-1]:
                 if token not in render_ptr:
                     render_ptr[token] = {}
-                else:
-                    render_ptr = render_ptr[token]
 
-            render_ptr[paths[-1]] = self.term.autofold().to_json()
-            top.debug('render', self.term.autofold().render(self.task))
+                render_ptr = render_ptr[token]
+
+            render_ptr[paths[-1]] = self.term.fold().to_json(self.task)
+            top.debug('render', self.term.fold().render(self.task))
         else:
             paths = self.path.split('.')
             render_ptr = self.rendered
@@ -36,6 +36,7 @@ class RenderCommand(Command):
             for token in paths:
                 render_ptr = render_ptr[token]
 
+            top.debug('render', render_ptr)
             return render_ptr
 
     @classmethod
