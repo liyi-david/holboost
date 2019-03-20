@@ -469,7 +469,7 @@ class Const(Term):
         univ_inst_str = str(self.univ_inst)
         found = environment.constant(self.name) is not None
 
-        if not debug and found:
+        if not debug:
             # for Coq.Init.Peano.gt we only return `gt`
             # if debug mode is not activated
             return self.name.split('.')[-1] + univ_inst_str
@@ -516,6 +516,9 @@ class Case(Term):
             ))
 
         return cls(term_matched, term_type, cases)
+
+    def to_json(self, environment=None):
+        return "TBD"
 
     def type(self, environment=None) -> 'Term':
         raise Exception('unimplemented')
