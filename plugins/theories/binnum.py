@@ -51,10 +51,13 @@ class BinaryNumberExpr(Macro):
             '-'  : None,
             '*'  : None,
             '/'  : None,
+            '>'  : None,
+            '>='  : None,
             '<=' : Const('Coq.ZArith.BinInt.Z.le'),
             '<'  : Const('Coq.ZArith.BinInt.Z.lt'),
             '='  : Apply(Ind('Coq.Init.Logic.eq', 0), BinaryNumberType()),
             '=='  : None,
+            '!='  : None,
             }
 
     def __init__(self, opr, l, r=None):
