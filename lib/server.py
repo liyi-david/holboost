@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 from time import time
 from sys import stdout
+from os.path import join
 
 from kernel.environment import NamedEnvironment
 from kernel.session import Session
@@ -17,6 +18,20 @@ import json
 
 threshold = 0.1
 
+routes = []
+
+def serve_as_vhost(vhost, folder):
+    """
+    this function creates a virtual folder at "/". for example, when
+
+        serve_folder('/home/foo/bar','/ide')
+
+    is called, all requests like /ide/bar.html will be redirected to
+    /home/foo/bar/bar.html
+    """
+    routes.append((vhost, folder))
+    routes.sort()
+
 
 def CoqTaskHandlerFactory(top : 'Top', profile : bool):
     # to generate CoqTaskHandlers with arguments
@@ -24,6 +39,34 @@ def CoqTaskHandlerFactory(top : 'Top', profile : bool):
     class CoqTaskHandler(BaseHTTPRequestHandler):
 
         def do_GET(self):
+
+            global routes
+            for vhost, folder in routes:
+                if self.path.startswith(vhost):
+                    top.debug("server", "VHOST SERVED GET REQUEST received.")
+                    realpath = self.path.replace(vhost, folder)
+
+                    # keep only the address, ignore all get params
+                    realpath = realpath.split('?')[0]
+                    top.debug("server", "reading file %s" % realpath)
+                    try:
+                        with open(realpath, 'rb') as f:
+                            text_type = "html"
+                            if realpath.endswith(".css"):
+                                text_type = "css"
+
+                            self.send_response(200)
+                            self.send_header('Content-type', 'text/%s' % text_type)
+                            self.end_headers()
+                            self.wfile.write(f.read())
+
+                    except FileNotFoundError:
+                        self.send_response(404)
+                        self.send_header('Content-type', 'text/html')
+                        self.end_headers()
+                        self.wfile.write(b'File Not Found')
+
+                    return
 
             top.debug("server", "GET request received.")
             data = parse_qs(urlparse(self.path).query)
@@ -184,4 +227,3 @@ def run_coq_server(port=8081, top=None, profile=False):
     thread.daemon = True
     thread.start()
     return http
-
