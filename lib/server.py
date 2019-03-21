@@ -1,8 +1,8 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 from time import time
-from sys import stdout
-from os.path import join
+from sys import stdout, stderr
+from os.path import join, exists
 
 from kernel.environment import NamedEnvironment
 from kernel.session import Session
@@ -29,6 +29,10 @@ def serve_as_vhost(vhost, folder):
     is called, all requests like /ide/bar.html will be redirected to
     /home/foo/bar/bar.html
     """
+    for v, f in routes:
+        if vhost.startswith(v) and exists(vhost.replace(v, f)):
+            print("warning: part of the virtual host %s will be overriden by %s." % (v, vhost), file=stderr)
+
     routes.append((vhost, folder))
     routes.sort()
 

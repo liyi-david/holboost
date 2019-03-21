@@ -8,6 +8,8 @@ from kernel.command import Command
 from plugins import load_plugins
 from plugins.basic.commands.render import RenderCommand
 
+from lib.server import serve_as_vhost
+
 load_plugins(top)
 
 # set default environment
