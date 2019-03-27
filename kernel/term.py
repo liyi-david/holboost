@@ -49,9 +49,6 @@ class Binding:
 
 class Term(abc.ABC):
 
-    # if a term is created by a notation, then the way it is rendered depends on the notation
-    # notations have no semantics
-    notation: 'Notation' = None
     term_subclasses = {}
 
     def __init__(self):
