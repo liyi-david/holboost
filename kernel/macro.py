@@ -28,6 +28,7 @@ class MacroFoldRule:
 
     @classmethod
     def fold(cls, term):
+        assert cls == MacroFoldRule, "unimplemented method fold of <%s>" % (cls.__name__)
         # a macro will not be folded
         if isinstance(term, Macro):
             return term

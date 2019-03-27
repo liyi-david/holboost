@@ -587,7 +587,7 @@ class Var(Const):
     def from_json(cls, json_item):
         return cls(json_item[1])
 
-    def to_json(self, environment):
+    def to_json(self, environment=None):
         return [
                 "var", self.name
                 ]

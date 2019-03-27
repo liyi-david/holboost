@@ -11,3 +11,5 @@ Proof.
     boom cbv "Top\.f".
     reflexivity.
 Qed.
+
+Boom Print Cmd.

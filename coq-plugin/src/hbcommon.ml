@@ -12,6 +12,7 @@ let str_contains (main:string) (sub:string) =
         true
     with
         Not_found -> false
+;;
 
 let get_constants_by_names (names: string list) (env : Environ.env) : Names.Constant.t list =
     let open Pre_env in
@@ -24,4 +25,8 @@ let get_constants_by_names (names: string list) (env : Environ.env) : Names.Cons
         else
             lst
     end global.env_constants []
+;;
+
+let get_full_cmd () : string =
+    Array.fold_left begin fun cmd arg -> cmd ^ arg ^ " " end "" Sys.argv
 ;;

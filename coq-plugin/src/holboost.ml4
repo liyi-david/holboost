@@ -166,6 +166,7 @@ VERNAC COMMAND EXTEND Boom_check CLASSIFIED AS QUERY
                         Not_found -> Feedback.msg_info Pp.(str "feedback missing")
         end
     ]
+    | [ "Boom" "Print" "Cmd" ] -> [ Feedback.msg_info Pp.(str (Hbcommon.get_full_cmd ())) ]
     | [ "Boom" "Print" "Env" ] -> [ Feedback.msg_info (Hbdebug.pr_current_environ ()) ]
     | [ "Boom" "Print" "Sigma" ] -> [ Feedback.msg_info (Hbdebug.pr_sigma ()) ]
     | [ "Boom" "Print" "Universes" ] -> [
