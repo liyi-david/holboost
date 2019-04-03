@@ -1,4 +1,5 @@
 from kernel.term import Apply, Const, Construct, Ind
+from kernel.macro import Macro, MacroFoldRule
 
 fst = Const("Coq.Init.Datatypes.fst")
 snd = Const("Coq.Init.Datatypes.snd")
@@ -46,3 +47,34 @@ def tuple_nth(t: 'Term', n: int, typ: 'Term' = None) -> 'Term':
     else:
         assert n == 0, "you can only obtain the 0th element in a non-tuple"
         return t
+
+
+class Tuple(Macro):
+
+    class FoldTuple(MacroFoldRule):
+
+        @classmethod
+        def fold(cls, t):
+            elems = []
+            while isinstance(t, Apply) and t.func == pair:
+                elems.append(t.args[3].fold())
+                t = t.args[2]
+
+            if elems == []: return
+            else:
+                elems.append(t.fold())
+                return Tuple(reversed(elems))
+
+
+
+    def __init__(self, elems):
+        self.elems = elems
+
+    def to_json(self, environment=None):
+        assert False, "unimplemented"
+
+    def unfold(self):
+        assert False, "unimplemented"
+
+    def render(self, environment):
+        return ", ".join(map(lambda t: t.render(environment), self.elems))

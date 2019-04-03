@@ -17,4 +17,8 @@ class Driver(metaclass=ABCMeta):
             except cls.ExportError:
                 pass
 
-        raise cls.ExportError
+        return cls.default(t, environment)
+
+    @classmethod
+    def default(cls, t, environment=None):
+        raise cls.ExportError("default function not implemented in driver <%s>" % cls.__name__)

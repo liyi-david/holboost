@@ -883,8 +883,8 @@ class LetIn(ContextTerm):
     def from_json(cls, json_item):
         return cls(
                 json_item[1],
-                Term.from_json(json_item[2]),
                 Term.from_json(json_item[3]),
+                Term.from_json(json_item[2]),
                 Term.from_json(json_item[4]),
                 )
 
